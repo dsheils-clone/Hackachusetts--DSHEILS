@@ -38,7 +38,7 @@ The human does these steps outside Kiro:
   - Assert that latitude, longitude and year are not features
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-- [ ] 4. Run the hindcast (45 min)
+- [x] 4. Run the hindcast (45 min)
   - Implement run_hindcast() as described in design.md
   - Save predicted and observed shifts per species to data/processed/hindcast.csv
   - _Requirements: 3.1, 3.2, 3.3, 3.4_

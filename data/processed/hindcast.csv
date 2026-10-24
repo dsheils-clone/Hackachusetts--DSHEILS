@@ -1,0 +1,7 @@
+species,svspp,predicted_shift_km,observed_shift_km,predicted_lat_early,predicted_lat_late,observed_lat_early,observed_lat_late,n_grid_cells,n_present_early,n_present_late
+longfin_squid,503,1.45,-2.73,39.9533,39.9664,39.675,39.6504,555,1903,1264
+summer_flounder,103,6.01,37.65,39.5093,39.5634,39.6249,39.964,555,658,476
+black_sea_bass,141,-0.46,1.86,39.2118,39.2076,39.5055,39.5222,555,507,420
+scup,143,-6.17,59.86,39.1279,39.0723,39.2572,39.7965,555,618,448
+silver_hake,072,8.12,14.95,41.1089,41.1821,41.1051,41.2398,555,1746,1123
+atlantic_cod,073,1.9,-19.65,41.8589,41.876,42.4711,42.2941,555,362,137
