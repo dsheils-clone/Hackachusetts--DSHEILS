@@ -22,9 +22,9 @@ The human does these steps outside Kiro:
 - [ ] 2. Clean and prepare the survey data (data-cleaner subagent) (1.5 h)
   - [x] 2.1 Inspect the SVSTA and SVCAT headers; map the real column names and species codes to design.md; write the mapping to data/processed/column_map.md
     - _Requirements: 1.1_
-  - [ ] 2.2 Checkpoint: stop and show the human the column mapping and species codes; continue only after they confirm
+  - [x] 2.2 Checkpoint: stop and show the human the column mapping and species codes; continue only after they confirm
     - _Requirements: 1.1_
-  - [ ] 2.3 Build the tows table: fall tows from 2009 onward with year, latitude, longitude, depth and bottom temperature; drop tows missing any of these and report how many; save data/processed/tows.csv
+  - [x] 2.3 Build the tows table: fall tows from 2009 onward with year, latitude, longitude, depth and bottom temperature; drop tows missing any of these and report how many; save data/processed/tows.csv
     - _Requirements: 1.1, 1.3_
   - [ ] 2.4 Build the presence table: one row per tow and target species, zero-filled; save data/processed/presence.csv
     - _Requirements: 1.2_
