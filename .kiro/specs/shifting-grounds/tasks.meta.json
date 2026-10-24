@@ -192,6 +192,11 @@
         "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792852479041
+      },
+      {
+        "executionId": "c1b85bcb-5675-4ab2-bfa0-0ab4b9e6b1f8",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792863037089
       }
     ],
     "9. Checkpoint: demo readiness (1 h)": [
@@ -242,6 +247,13 @@
         "executionId": "c1b85bcb-5675-4ab2-bfa0-0ab4b9e6b1f8",
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792861795768
+      }
+    ],
+    "7.1 Map revamp: leases as a bold foreground layer with a grid on/off toggle; smoother, semi-transparent/blurred habitat cells anchored to the real 0.2° cells (no interpolation of values); keep OpenStreetMap basemap (no API key)": [
+      {
+        "executionId": "2549fd1c-400b-4e05-9304-c90c704ff416",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792863453286
       }
     ]
   }

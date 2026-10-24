@@ -203,55 +203,115 @@ def _change_to_color(change: float) -> str:
 
 
 def build_map(leases, grid_change: pd.DataFrame, selected_lease_id: str | None = None):
-    """Build the folium map: grid cells colored by change + lease outlines.
+    """Build the folium map: a smoother habitat-change surface under bold lease areas.
 
-    - Each grid cell is drawn as its 0.2-degree square (lower-left corner at
-      lat_cell/lon_cell), filled by the diverging change palette.
-    - Active BOEM lease outlines are drawn on top; the selected lease is highlighted.
-    Returns a folium.Map. Imported lazily so the module (and its data functions) can be
-    smoke-tested without folium side effects at import time.
+    Layering (bottom to top): OpenStreetMap basemap, then the habitat-change grid, then
+    the wind lease areas drawn as the bold foreground. A LayerControl lets the user hide
+    the grid independently while the leases stay visible.
+
+    Habitat grid (honest, no interpolation):
+    - Each real 0.2-degree cell (lower-left corner at lat_cell/lon_cell) is still drawn as
+      exactly ONE rectangle carrying ONE computed change value from grid_predictions.csv.
+      We do NOT interpolate or invent sub-cell values.
+    - The "smoother heat surface" look is purely a DISPLAY effect: the grid is placed in a
+      dedicated map pane with a CSS blur filter and a lower fill opacity, so the hard
+      spreadsheet edges feather and OSM place labels / lease outlines stay legible. The
+      blur softens how the edges LOOK; it never moves a value into a neighbour's cell, and
+      each rectangle's bounds and tooltip stay anchored to its own real cell.
+
+    Wind lease areas (bold foreground):
+    - Drawn ABOVE the grid with a strong dark outline and a soft halo (a wide, faint
+      under-stroke) so they read as the focus against both the basemap and the colored
+      grid. The selected lease is thicker, filled and highlighted.
+
+    Returns a folium.Map. folium is imported lazily so the module (and its data
+    functions) can be smoke-tested without folium side effects at import time.
     """
     import folium
+    from folium.map import CustomPane
 
     # Center on the survey area (roughly the Mid-Atlantic to Gulf of Maine shelf).
-    fmap = folium.Map(location=[40.5, -71.0], zoom_start=6, tiles="CartoDB positron")
+    fmap = folium.Map(location=[40.5, -71.0], zoom_start=6, tiles="OpenStreetMap")
 
-    # --- Grid cells colored by change ---------------------------------------
-    grid_layer = folium.FeatureGroup(name="Habitat change", show=True)
+    # A dedicated pane for the grid, sitting just above the basemap tiles (overlayPane is
+    # z-index 400) but below the lease shapes, with a CSS blur so the cell edges feather.
+    # The blur is a DISPLAY-ONLY softening of how the fixed-size cells LOOK; it does not
+    # interpolate, resample or shift any cell's value (each cell is still one rectangle).
+    grid_pane = CustomPane(
+        name="grid_pane",
+        z_index=410,
+        pointer_events=True,
+    )
+    grid_pane.add_to(fmap)
+    # Apply the feathering blur to just this pane (not the basemap or the leases).
+    blur_css = folium.Element(
+        "<style>.leaflet-grid_pane-pane{filter:blur(6px);opacity:0.92;}</style>"
+    )
+    fmap.get_root().header.add_child(blur_css)
+
+    # --- Habitat-change grid (smoother look, one value per real cell) --------
+    grid_layer = folium.FeatureGroup(name="Habitat change (toggle)", show=True)
     for _, row in grid_change.iterrows():
         lat, lon = float(row["lat_cell"]), float(row["lon_cell"])
         change = row["change"]
         color = _change_to_color(change)
         pct = "n/a" if pd.isna(change) else f"{change:+.0%}"
         folium.Rectangle(
+            # Bounds stay exactly on the real 0.2-degree cell: no overlap, no resampling.
             bounds=[[lat, lon], [lat + CELL, lon + CELL]],
-            color=None,
-            weight=0,
+            color=color,       # soft edge the same hue as the fill (no hard black border)
+            weight=1,
+            opacity=0.0,       # the stroke itself is invisible; the pane blur feathers it
             fill=True,
             fill_color=color,
-            fill_opacity=0.55,
-            tooltip=f"Change: {pct}",
+            fill_opacity=0.42,  # lower than before so OSM labels + lease outlines show
+            pane="grid_pane",
+            tooltip=f"Cell change: {pct} (0.2\u00b0 survey grid cell)",
         ).add_to(grid_layer)
     grid_layer.add_to(fmap)
 
-    # --- Lease outlines -----------------------------------------------------
+    # --- Wind lease areas: the bold foreground layer -------------------------
     lease_layer = folium.FeatureGroup(name="Wind lease areas", show=True)
     for _, lease in leases.iterrows():
-        is_selected = selected_lease_id is not None and lease["lease_id"] == selected_lease_id
+        is_selected = (
+            selected_lease_id is not None and lease["lease_id"] == selected_lease_id
+        )
+        geom = lease.geometry.__geo_interface__
+        tip = f"{lease['lease_id']} \u2014 {lease['lease_name']}"
+
+        # Soft halo: a wide, faint under-stroke so each lease stands off the colored grid
+        # and the OSM basemap before the crisp outline is drawn over it.
         folium.GeoJson(
-            lease.geometry.__geo_interface__,
+            geom,
             style_function=(
-                (lambda _f, sel=is_selected: {
-                    "color": "#111111" if sel else "#444444",
-                    "weight": 3 if sel else 1,
+                lambda _f, sel=is_selected: {
+                    "color": "#ffffff" if sel else "#f2f2f2",
+                    "weight": 9 if sel else 6,
+                    "opacity": 0.85 if sel else 0.6,
                     "fill": False,
-                })
+                }
             ),
-            tooltip=f"{lease['lease_id']} \u2014 {lease['lease_name']}",
+        ).add_to(lease_layer)
+
+        # Crisp bold outline on top. The selected lease is thicker, filled and highlighted.
+        folium.GeoJson(
+            geom,
+            style_function=(
+                lambda _f, sel=is_selected: {
+                    "color": "#b30000" if sel else "#111111",
+                    "weight": 4 if sel else 2.5,
+                    "opacity": 1.0,
+                    "fill": True,
+                    "fillColor": "#ff6d3a" if sel else "#111111",
+                    "fillOpacity": 0.28 if sel else 0.06,
+                }
+            ),
+            tooltip=tip,
         ).add_to(lease_layer)
     lease_layer.add_to(fmap)
 
-    folium.LayerControl(collapsed=True).add_to(fmap)
+    # Toggle: the grid can be hidden independently; the leases stay visible.
+    folium.LayerControl(collapsed=False).add_to(fmap)
     return fmap
 
 
@@ -445,7 +505,15 @@ def main() -> None:
             st_folium(fmap, width=None, height=560, returned_objects=[])
             st.markdown(
                 "Blue = habitat suitability falls, red = rises, white \u2248 little "
-                "change (saturates at \u00b130%). Grey cells have an undefined change."
+                "change (saturates at \u00b130%). Grey cells have an undefined change. "
+                "Wind lease areas are outlined in bold on top; the selected lease is "
+                "highlighted. Use the layer control (top right) to hide the habitat grid "
+                "and read the map."
+            )
+            st.caption(
+                "Each colored patch is one real 0.2\u00b0 survey grid cell with its own "
+                "computed value \u2014 the softened edges are display smoothing only, not "
+                "interpolation between cells."
             )
 
         with col_panel:

@@ -68,6 +68,11 @@ The human does these steps outside Kiro:
   - Uniform-warming note, "Shows change in fishing overlap, not harm to fish", and data credits in the footer
   - _Requirements: 4.3, 6.2, 8.1, 8.2, 8.3, 8.4, 8.5_
 
+  - [x] 7.1 Map revamp: leases as a bold foreground layer with a grid on/off toggle; smoother, semi-transparent/blurred habitat cells anchored to the real 0.2° cells (no interpolation of values); keep OpenStreetMap basemap (no API key)
+    - _Requirements: 4.3, 8.1, 8.2_
+  - [ ] 7.2 Warming slider/animation: sweep +0 → +2°C showing the habitat change build up, framed as DEGREES OF WARMING not years (honest; only the +0/+1/+2°C scenarios the model produced, or clearly-labelled interpolation); its own human checkpoint
+    - _Requirements: 4.2, 4.3, 8.1_
+
 - [ ] 8. Add explanations (1 h)
   - SHAP temperature response plot per species in a tab
   - Implement brief() with the DeepSeek prompt in design.md, reading DEEPSEEK_API_KEY and DEEPSEEK_MODEL from .env
