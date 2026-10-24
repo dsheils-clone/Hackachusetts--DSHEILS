@@ -4,19 +4,18 @@ inclusion: always
 
 # Workflow rules
 
-## After every completed task, addition or fix
+## After every completed task or fix
 1. Run the app (or tests, if they exist) and confirm nothing broke. Fix breakages before moving on.
-2. Append an entry to docs/DECISIONS.md for every decision made during the change, including decisions the human made in chat.
+2. If a decision was made during the change, by you or by the human in chat, append an entry to docs/DECISIONS.md. Skip this step if no decision was made.
 3. Append a short entry to docs/CHANGELOG.md.
-4. If a feature is finished, update the matching section of docs/WRITEUP.md.
-5. Mark the task done in tasks.md.
-6. Commit everything in one commit with the message `type(scope): summary`. Types: feat, fix, data, model, docs, chore.
-7. Push.
+4. Mark the task done in tasks.md.
+5. Commit everything in one commit with the message `type(scope): summary`. Types: feat, fix, data, model, docs, chore.
+6. Push.
 
 ## Decision log entry (docs/DECISIONS.md)
-Number decisions in order. Get the time from `date`.
+Number decisions in order, continuing from the last entry. Get the time from `date`.
 
-### D-007 · 14:32 · Drop interconnection agreement status from features
+### D-011 · 14:32 · Drop interconnection agreement status from features
 - Decided by: human or agent
 - Context: one line on the situation
 - Decision: what was chosen
@@ -30,7 +29,7 @@ Number decisions in order. Get the time from `date`.
 - Known issues: or "none"
 
 ## Writeup (docs/WRITEUP.md)
-Keep these headings, which match Devpost: Inspiration, What it does, How we built it, Challenges we ran into, Accomplishments, What we learned, What's next.
+Update it only when the human asks, using DECISIONS.md and CHANGELOG.md. Keep these headings, which match Devpost: Inspiration, What it does, How we built it, Challenges we ran into, Accomplishments, What we learned, What's next.
 
 ## Guardrails
 - Ask the human before changing the model's label or features, adding a dependency, deleting files, or force-pushing.
