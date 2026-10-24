@@ -26,7 +26,7 @@ The human does these steps outside Kiro:
     - _Requirements: 1.1_
   - [x] 2.3 Build the tows table: fall tows from 2009 onward with year, latitude, longitude, depth and bottom temperature; drop tows missing any of these and report how many; save data/processed/tows.csv
     - _Requirements: 1.1, 1.3_
-  - [ ] 2.4 Build the presence table: one row per tow and target species, zero-filled; save data/processed/presence.csv
+  - [x] 2.4 Build the presence table: one row per tow and target species, zero-filled; save data/processed/presence.csv
     - _Requirements: 1.2_
   - [ ] 2.5 Main agent review: report tows per year and presence rate per species; check every tow has a row for every species; flag anything odd to the human
     - _Requirements: 1.4_

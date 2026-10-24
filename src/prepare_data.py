@@ -17,6 +17,14 @@ Processed-table schema for tows.csv (per design.md):
     DECDEG_BEGLON  longitude (deg)    (SVSTA.DECDEG_BEGLON)
     AVGDEPTH  depth (m)               (SVSTA.AVGDEPTH)
     BOTTEMP   bottom temperature (C)  (SVSTA.BOTTEMP)
+
+Processed-table schema for presence.csv (per design.md, task 2.4). Long/tidy form:
+one row per (tow, target species), zero-filled so every tow in tows.csv has a row
+for all six species (design.md Testing Strategy):
+    ID        tow / station id (joins to tows.csv on ID)
+    species   target-species key from TARGET_SPECIES (e.g. "longfin_squid")
+    SVSPP     zero-padded 3-char species code (e.g. "503")
+    present   1 if an SVCAT row exists for this ID with this SVSPP, else 0
 """
 
 from __future__ import annotations
@@ -43,6 +51,7 @@ CRUISES_PATH = os.path.join(SURVEY_DIR, "22560_SVDBS_CRUISES.csv")
 
 PROCESSED_DIR = os.path.join(REPO_ROOT, "data", "processed")
 TOWS_PATH = os.path.join(PROCESSED_DIR, "tows.csv")
+PRESENCE_PATH = os.path.join(PROCESSED_DIR, "presence.csv")
 
 # --- Constants (confirmed mapping, column_map.md / decisions D-005, D-013) ---
 
@@ -78,6 +87,9 @@ REQUIRED_FIELDS = [
     "AVGDEPTH",
     "BOTTEMP",
 ]
+
+# Canonical presence.csv columns, in order (long/tidy form; one row per tow+species).
+PRESENCE_COLUMNS = ["ID", "species", "SVSPP", "present"]
 
 
 # --- Loaders ----------------------------------------------------------------
@@ -200,14 +212,134 @@ def save_tows(tows: pd.DataFrame, path: str = TOWS_PATH) -> None:
     tows.to_csv(path, index=False)
 
 
+# --- Presence table ---------------------------------------------------------
+
+
+def build_presence(
+    tows: pd.DataFrame,
+    catch: pd.DataFrame,
+    species_codes: dict[str, str] = TARGET_SPECIES,
+    verbose: bool = True,
+) -> pd.DataFrame:
+    """Build the zero-filled presence table in long form (design.md, task 2.4).
+
+    One row per (tow, target species) for every tow in `tows` and every species in
+    `species_codes`. `present` is 1 if an SVCAT row exists for that tow's ID with the
+    matching SVSPP, else 0 (zero-fill). Columns: PRESENCE_COLUMNS.
+
+    A species is present if ANY SVCAT row for the tow carries its code, regardless of
+    sex split (CATCHSEX) or catch amount, matching the column_map.md join rule. Longfin
+    squid counts SVSPP 503 only and excludes 520 (egg mops, D-013): 520 is simply not
+    in species_codes, so a membership test against the target codes never sees it.
+
+    Reports, for each species, the number and rate of tows marked present.
+    """
+
+    def log(msg: str) -> None:
+        if verbose:
+            print(msg)
+
+    tow_ids = tows["ID"].astype(str)
+    n_tows = len(tow_ids)
+    log(f"[presence] tows to zero-fill: {n_tows}")
+    log(f"[presence] target species ({len(species_codes)}): {list(species_codes)}")
+
+    # Target SVSPP codes only. 520 (egg mops) is absent here by construction, so it
+    # can never count toward longfin squid presence (D-013 / column_map.md FLAG 3).
+    target_svspp = set(species_codes.values())
+
+    # Restrict the big catch table to (a) tows we keep and (b) target species codes,
+    # then reduce to the unique (ID, SVSPP) pairs that are present. This collapses the
+    # per-sex / per-length SVCAT rows down to a single presence fact per tow+species.
+    catch_ids = catch["ID"].astype(str)
+    catch_svspp = catch["SVSPP"].astype(str)
+    tow_id_set = set(tow_ids)
+    keep = catch_ids.isin(tow_id_set) & catch_svspp.isin(target_svspp)
+    present_pairs = (
+        pd.DataFrame({"ID": catch_ids[keep], "SVSPP": catch_svspp[keep]})
+        .drop_duplicates()
+    )
+    present_lookup = set(zip(present_pairs["ID"], present_pairs["SVSPP"]))
+    log(
+        f"[presence] SVCAT rows kept (target species, kept tows): {int(keep.sum())} "
+        f"-> {len(present_lookup)} unique (tow, species) presences"
+    )
+
+    # Cross every kept tow with every target species, then set present from the lookup.
+    # Building the full grid first guarantees the zero-fill: no tow+species is skipped.
+    code_df = pd.DataFrame(
+        {"species": list(species_codes.keys()), "SVSPP": list(species_codes.values())}
+    )
+    presence = tows[["ID"]].astype({"ID": str}).merge(code_df, how="cross")
+    presence["present"] = [
+        1 if (tow_id, svspp) in present_lookup else 0
+        for tow_id, svspp in zip(presence["ID"], presence["SVSPP"])
+    ]
+
+    presence = presence[PRESENCE_COLUMNS].copy()
+
+    # Order rows by species (TARGET_SPECIES order) then tow ID for a stable file.
+    species_order = {name: i for i, name in enumerate(species_codes)}
+    presence = (
+        presence.assign(_ord=presence["species"].map(species_order))
+        .sort_values(["_ord", "ID"])
+        .drop(columns="_ord")
+        .reset_index(drop=True)
+    )
+
+    # --- Report presence count and rate per species (Requirement 1.4) ---
+    log("[presence] presence count and rate per species:")
+    for name in species_codes:
+        rows = presence.loc[presence["species"] == name, "present"]
+        n_present = int(rows.sum())
+        rate = n_present / n_tows if n_tows else 0.0
+        log(
+            f"         {name:>16} (SVSPP {species_codes[name]}): "
+            f"{n_present}/{n_tows} present ({rate:.1%})"
+        )
+
+    # --- Invariant: every tow has exactly one row per species (design.md Testing) ---
+    expected = n_tows * len(species_codes)
+    assert len(presence) == expected, (
+        f"presence row count {len(presence)} != tows x species ({expected})"
+    )
+    per_species_counts = presence.groupby("species")["ID"].nunique()
+    assert (per_species_counts == n_tows).all(), (
+        "not every species has a row for every tow: "
+        f"{per_species_counts.to_dict()}"
+    )
+    # No duplicate (tow, species) pairs.
+    assert not presence.duplicated(subset=["ID", "species"]).any(), (
+        "duplicate (tow, species) rows found in presence table"
+    )
+    log(
+        f"[presence] invariant OK: {expected} rows = {n_tows} tows x "
+        f"{len(species_codes)} species; every tow has a row for every species"
+    )
+
+    return presence
+
+
+def presence_rates(presence: pd.DataFrame) -> pd.Series:
+    """Return the presence rate (mean of `present`) per species."""
+    return presence.groupby("species")["present"].mean()
+
+
+def save_presence(presence: pd.DataFrame, path: str = PRESENCE_PATH) -> None:
+    """Write the presence table to CSV (no index)."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    presence.to_csv(path, index=False)
+
+
 # --- Script entry point -----------------------------------------------------
 
 
 def main() -> None:
-    print("=== Shifting Grounds: build tows table (task 2.3) ===")
-    stations, _catch = load_survey()
+    print("=== Shifting Grounds: prepare survey data (tasks 2.3 + 2.4) ===")
+    stations, catch = load_survey()
     cruises = load_cruises()
 
+    # --- tows table (task 2.3) ---
     tows = build_tows(stations, cruises)
 
     save_tows(tows)
@@ -217,6 +349,13 @@ def main() -> None:
     print("[tows] tows per year:")
     for year, count in tows_per_year(tows).items():
         print(f"         {year}: {count}")
+
+    # --- presence table (task 2.4) ---
+    presence = build_presence(tows, catch)
+
+    save_presence(presence)
+    print(f"[presence] saved {len(presence)} rows to {PRESENCE_PATH}")
+    print(f"[presence] columns: {list(presence.columns)}")
 
 
 if __name__ == "__main__":
