@@ -54,7 +54,7 @@ from overlap import (  # noqa: E402  (after sys.path tweak)
     NO_REVENUE,
     load_leases,
 )
-from prepare_data import TARGET_SPECIES  # noqa: E402
+from prepare_data import TARGET_SPECIES, TOWS_PATH  # noqa: E402
 from scenarios import CELL, GRID_PREDICTIONS_PATH  # noqa: E402
 
 # --- Paths ------------------------------------------------------------------
@@ -643,6 +643,45 @@ def main() -> None:
         # GeoDataFrame: cached as a resource (not a copyable data frame).
         return load_lease_outlines()
 
+    # --- Task 8 cached builders (SHAP figure + DeepSeek brief) --------------
+    import explain  # local to main(): keeps module import side-effect-free for tests
+
+    @st.cache_resource(show_spinner=False)
+    def _temp_response_cached(species_key: str):
+        """Build (and cache) the SHAP temperature-response figure for one species.
+
+        Loads the trained model and a sample of tow features once per species. Returns
+        None if the model or sample is unavailable, so the tab degrades gracefully.
+        """
+        import joblib
+
+        model_path = os.path.join(REPO_ROOT, "models", f"{species_key}.joblib")
+        if not os.path.exists(model_path):
+            return None
+        try:
+            model = joblib.load(model_path)
+            tows = pd.read_csv(TOWS_PATH)
+            sample = tows[["BOTTEMP", "AVGDEPTH"]].dropna()
+            # Sample for speed; the explainer caps its background too.
+            if len(sample) > 600:
+                sample = sample.sample(600, random_state=42)
+            return explain.temperature_response(model, sample)
+        except Exception:
+            return None
+
+    @st.cache_data(show_spinner=False)
+    def _brief_cached(lease_id_: str, species_: str, delta_: int) -> str:
+        """Build (and cache) the DeepSeek brief for one (lease, species, scenario).
+
+        Cached so re-selecting the same combination does not re-call DeepSeek. The call
+        itself falls back to the deterministic template on any failure, so this never
+        crashes or hangs the app.
+        """
+        r = lease_panel_row(signals, lease_id_, species_, delta_)
+        if r is None:
+            return ""
+        return explain.brief(r)
+
     signals = _signals()
     grid_preds = _grid()
     hindcast = _hindcast()
@@ -722,8 +761,10 @@ def main() -> None:
         # is safe; we never write the widget's key after it is instantiated.
         st.session_state["selected_lease_id"] = st.session_state["lease_select_widget"]
 
-    # --- Tabs: map + lease panel, then hindcast -----------------------------
-    tab_map, tab_hindcast = st.tabs(["Map & lease", "Hindcast"])
+    # --- Tabs: map + lease panel, hindcast, then temperature response -------
+    tab_map, tab_hindcast, tab_temp = st.tabs(
+        ["Map & lease", "Hindcast", "Temperature response"]
+    )
 
     with tab_map:
         col_map, col_panel = st.columns([3, 2])
@@ -936,13 +977,22 @@ def main() -> None:
                     format_revenue(row["avg_value"]),
                 )
 
+                # --- Task 8: DeepSeek brief (with template fallback) --------
+                # A 2-3 sentence plain-English note built ONLY from the numbers above and
+                # the fixed suggestion text (explain.brief). If the DeepSeek call fails
+                # for any reason it returns the deterministic template sentence, so this
+                # never crashes or hangs the app. We render it ABOVE the fixed suggestion;
+                # the suggestion text is still shown in full below (the brief supplements,
+                # it does not replace it).
+                st.markdown("**Plain-English brief**")
+                with st.spinner("Writing a short brief..."):
+                    brief_text = _brief_cached(
+                        lease_id, species, int(delta)
+                    )
+                st.write(brief_text)
+
                 st.markdown("**Suggestion**")
                 st.write(row["suggestion"])
-
-                # --- Task 8 seam: DeepSeek brief ----------------------------
-                # Task 8 will call explain.brief(row) here (DeepSeek, with the template
-                # fallback) and render a 2-3 sentence plain-English note above the
-                # suggestion. Left intentionally unimplemented in task 7.
 
     with tab_hindcast:
         st.subheader(f"Hindcast \u2014 {SPECIES_LABELS[species]}")
@@ -983,9 +1033,24 @@ def main() -> None:
                     "Point estimates only."
                 )
 
-        # --- Task 8 seam: SHAP temperature response -------------------------
-        # Task 8 will add a tab (or section) with each species' SHAP bottom-temperature
-        # response plot. Left intentionally unimplemented in task 7.
+    # --- Task 8: SHAP temperature response tab ------------------------------
+    with tab_temp:
+        st.subheader(f"Temperature response \u2014 {SPECIES_LABELS[species]}")
+        st.caption(
+            "How this species' predicted habitat suitability responds across bottom "
+            "temperature, holding depth at the sample median. The blue points are the "
+            "SHAP contribution of bottom temperature per tow (how much it pushes "
+            "suitability up or down). Shows the model's learned temperature response, "
+            "not harm to fish."
+        )
+        fig_temp = _temp_response_cached(species)
+        if fig_temp is None:
+            st.info(
+                "Could not build the temperature-response plot for this species "
+                "(missing model or sample data)."
+            )
+        else:
+            st.pyplot(fig_temp)
 
     # --- Footer -------------------------------------------------------------
     st.divider()

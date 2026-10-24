@@ -75,7 +75,7 @@ The human does these steps outside Kiro:
   - [x] 7.3 Move the lease-area selector to the right panel (above the lease status) and make clicking a lease polygon on the map select it; map-click and dropdown stay in sync
     - _Requirements: 6.2, 8.1, 8.3_
 
-- [ ] 8. Add explanations (1 h)
+- [x] 8. Add explanations (1 h)
   - SHAP temperature response plot per species in a tab
   - Implement brief() with the DeepSeek prompt in design.md, reading DEEPSEEK_API_KEY and DEEPSEEK_MODEL from .env
   - Fall back to the template sentence if the call fails
