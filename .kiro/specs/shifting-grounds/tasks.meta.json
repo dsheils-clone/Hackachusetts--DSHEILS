@@ -156,6 +156,11 @@
         "executionId": "35573533-f13d-47cb-a4a6-49d7f34286ed",
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792857704346
+      },
+      {
+        "executionId": "d86288e6-f423-4d25-a289-8a326560ec24",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792858212748
       }
     ],
     "6.3 Join the 5-year average value to each lease and species, showing \"no data\" when nothing matches; save data/processed/lease_signals.csv": [
@@ -205,6 +210,23 @@
         "executionId": "fed72f2b-d9e7-4fc1-8f6b-f54d2945d63d",
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792853824827
+      }
+    ],
+    "4.1 Revise hindcast per docs/HINDCAST_BRIEF.md": [
+      {
+        "executionId": "d86288e6-f423-4d25-a289-8a326560ec24",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792858303375
+      },
+      {
+        "executionId": "0341df76-3d4f-4ecb-b03d-2c0666258163",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792860847851
+      },
+      {
+        "executionId": "c1b85bcb-5675-4ab2-bfa0-0ab4b9e6b1f8",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792860903964
       }
     ]
   }

@@ -107,11 +107,18 @@ Longfin squid, summer flounder, black sea bass, scup, silver hake and Atlantic c
 
 ### Hindcast
 
-1. Train each species' model on 2009–2015 tows only.
-2. Build a grid of mean bottom temperature and depth for 2009–2015 and another for 2019 onward. Use only grid cells sampled in both periods.
-3. Predicted shift: change in the suitability-weighted mean latitude of the grid between the two periods, converted to km (1° latitude ≈ 111 km).
-4. Observed shift: change in the mean latitude of tows where the species was present between the two periods.
-5. Save both shifts per species to data/processed/hindcast.csv.
+Train each species' model on 2009–2015 tows only, then ask whether the shift the survey later saw (2019 onward) matches what that early model implies. Predicted and observed are measured the same way over the same cells so they can be compared fairly (revised method, D-019; brief docs/HINDCAST_BRIEF.md). The bootstrap confidence intervals and per-species verdicts from D-019 were dropped for runtime (D-020): the hindcast fits each species' early model once and reports **point estimates only**, with no uncertainty. Results are framed as "predicted vs observed along-shelf (and depth) shift on a comparable metric", never as agree/disagree. With no interval there is no way to separate a small shift from noise, so small shifts (a few km or a few m) are point estimates that may be noise.
+
+1. **Shared cells.** Snap tows to 0.2° cells. Keep only cells with at least 2 tows in *each* period (early 2009–2015, late 2019 onward), matching the scenario grid's 2-tow minimum.
+2. **Presence rate per cell, per period.**
+   - Observed = present tows ÷ total tows in the cell.
+   - Predicted = mean of the early model's predicted probability over the cell's tows, each tow keeping its own BOTTEMP and AVGDEPTH (not the cell-mean temperature).
+3. **Fixed cell geometry.** A cell's position is its geometric center (lower-left corner + 0.1° in both directions), the same in both periods. A cell's depth is the mean AVGDEPTH of all its tows from both periods pooled, also the same in both periods. Only presence rates can move a habitat center.
+4. **Habitat center** (predicted or observed) = the presence-rate-weighted mean position of the shared cells. **Shift** = late center − early center.
+5. **Along-shelf axis.** Reproject cell centers to EPSG:5070 (D-016). The along-shelf axis is the first principal component of all 2009-onward tow positions in EPSG:5070, oriented so positive points northeast; its bearing is printed. Along-shelf shift (km) = change in the center's position along that axis. Depth shift (m) = change in the presence-weighted mean cell depth (positive = deeper). The north-south latitude shift (km, 1° ≈ 111 km) is kept as a secondary column for comparison with the old numbers.
+6. **Point estimates only (no bootstrap, no verdict — D-020).** Each species' early model is fit exactly once and all shifts are computed from the real shared cells. The 200-replicate bootstrap and the sign-aware verdicts from D-019 were dropped for runtime, so there are no confidence intervals and no agree/disagree verdict. Predicted and observed shifts are reported side by side as point estimates on a comparable metric; a small shift cannot be distinguished from noise.
+7. **Extrapolation diagnostic (report only).** Per species, the share of late-period tows in shared cells with BOTTEMP outside the early training tows' min–max range (the `frac_late_outside_train_temp` column). Separately, printed to the console, the share of grid cells in data/processed/grid_predictions.csv at +1°C and +2°C above the 2009–2018 models' maximum training temperature. This is context for the scenarios; src/scenarios.py is not changed.
+8. Save per-species results to data/processed/hindcast.csv with columns: species, svspp, axis_bearing_deg, pred_shelf_km, obs_shelf_km, pred_depth_m, obs_depth_m, pred_lat_km, obs_lat_km, n_cells, n_present_early, n_present_late, frac_late_outside_train_temp.
 
 ### Grid and scenarios
 

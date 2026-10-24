@@ -42,6 +42,9 @@ The human does these steps outside Kiro:
   - Implement run_hindcast() as described in design.md
   - Save predicted and observed shifts per species to data/processed/hindcast.csv
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [-] 4.1 Revise hindcast per docs/HINDCAST_BRIEF.md
+    - Same shared cells and presence-rate metric for predicted and observed; along-shelf axis plus depth; 200-replicate bootstrap 90% intervals; per-species verdicts; extrapolation diagnostic
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
 - [x] 5. Build the grid and warming scenarios (1 h)
   - Build the 0.2° grid from 2016-onward tows, keeping cells with at least 2 tows
@@ -52,7 +55,7 @@ The human does these steps outside Kiro:
 - [ ] 6. Compute lease signals and revenue context (1 h)
   - [x] 6.1 Load active leases; compute area-weighted suitability, percent change and signal with the thresholds and suggestion text in design.md
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
-  - [ ] 6.2 (data-cleaner subagent) Clean the NOAA revenue CSV and draft data/processed/name_map.csv matching NOAA species and area names to the survey species and BOEM leases; stop and ask the human to confirm the mapping
+  - [x] 6.2 (data-cleaner subagent) Clean the NOAA revenue CSV and draft data/processed/name_map.csv matching NOAA species and area names to the survey species and BOEM leases; stop and ask the human to confirm the mapping
     - _Requirements: 6.1_
   - [ ] 6.3 Join the 5-year average value to each lease and species, showing "no data" when nothing matches; save data/processed/lease_signals.csv
     - _Requirements: 6.1, 6.3_
@@ -61,7 +64,7 @@ The human does these steps outside Kiro:
   - Map with lease outlines and the grid colored by change for the selected species and scenario, using streamlit-folium
   - Species, scenario and lease selectors in the sidebar
   - Lease panel with signal, numbers, revenue and suggestion
-  - Hindcast tab for the selected species
+  - Hindcast tab for the selected species, including a scatter plot of all six species: predicted vs observed along-shelf shift, with a 1:1 line and the selected species highlighted plus its depth shift shown next to the plot (point estimates only — no error bars and no verdict coloring, per D-020); caption "Trained on 2009–2015 only, then compared with what the survey saw from 2019 on. Point estimates; small shifts may be noise."
   - Uniform-warming note, "Shows change in fishing overlap, not harm to fish", and data credits in the footer
   - _Requirements: 4.3, 6.2, 8.1, 8.2, 8.3, 8.4, 8.5_
 
