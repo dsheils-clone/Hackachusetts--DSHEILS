@@ -1,0 +1,124 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1. Set up the project (20 min)": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852477828
+      }
+    ],
+    "2.1 Inspect the SVSTA and SVCAT headers; map the real column names and species codes to design.md; write the mapping to data/processed/column_map.md": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852477994
+      }
+    ],
+    "2.2 Checkpoint: stop and show the human the column mapping and species codes; continue only after they confirm": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478189
+      }
+    ],
+    "2.3 Build the tows table: fall tows from 2009 onward with year, latitude, longitude, depth and bottom temperature; drop tows missing any of these and report how many; save data/processed/tows.csv": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478268
+      }
+    ],
+    "2.4 Build the presence table: one row per tow and target species, zero-filled; save data/processed/presence.csv": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478347
+      }
+    ],
+    "2.5 Main agent review: report tows per year and presence rate per species; check every tow has a row for every species; flag anything odd to the human": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478428
+      }
+    ],
+    "3. Train the habitat models (1 h)": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478505
+      }
+    ],
+    "4. Run the hindcast (45 min)": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478560
+      }
+    ],
+    "5. Build the grid and warming scenarios (1 h)": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478625
+      }
+    ],
+    "6.1 Load active leases; compute area-weighted suitability, percent change and signal with the thresholds and suggestion text in design.md": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478715
+      }
+    ],
+    "6.2 (data-cleaner subagent) Clean the NOAA revenue CSV and draft data/processed/name_map.csv matching NOAA species and area names to the survey species and BOEM leases; stop and ask the human to confirm the mapping": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478798
+      }
+    ],
+    "6.3 Join the 5-year average value to each lease and species, showing \"no data\" when nothing matches; save data/processed/lease_signals.csv": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478893
+      }
+    ],
+    "7. Build the app: map, selectors and lease panel (2 h)": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852478968
+      }
+    ],
+    "8. Add explanations (1 h)": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852479041
+      }
+    ],
+    "9. Checkpoint: demo readiness (1 h)": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852479124
+      }
+    ],
+    "10.1 Add an all-species view weighted by each species' share of NOAA revenue": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852479237
+      }
+    ],
+    "10.2 Add the spring survey as a second season and compare signals": [
+      {
+        "executionId": "c07b64c8-b9db-49d8-8c0f-cb6bd87d5e30",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792852479313
+      }
+    ]
+  }
+}
