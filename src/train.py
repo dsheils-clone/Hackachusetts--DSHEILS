@@ -66,6 +66,26 @@ TEST_MIN_YEAR = 2019
 
 RANDOM_STATE = 42
 
+# --- Regularization (task 3.1; human-approved option 2: mild regularization) -----------
+#
+# The default HistGradientBoostingClassifier overfits where training data is sparse. The
+# SHAP temperature-response plot showed a jagged oscillation at the cold end (~6-8 C) where
+# few tows exist: a gradient-boosted-tree artifact, not biology. The human (who knows fish
+# behavior) chose REGULARIZATION rather than a monotonic temperature constraint, precisely
+# to AVOID baking in "colder is always better". A monotonic constraint would erase a
+# possible cold optimum for cold-water species such as Atlantic cod. So we smooth with
+# regularization ONLY and add NO monotonic constraint (D-0xx).
+#
+# Two knobs, both pushing the trees toward simpler, better-supported splits:
+#   - min_samples_leaf: require more tows in each leaf so a handful of cold tows can no
+#     longer carve out their own sharp leaf (default is 20; we raise it).
+#   - l2_regularization: shrink leaf values toward zero, damping spiky over-confident leaves.
+# These are named constants so the choice is auditable (.kiro/steering/workflow.md). They
+# visibly damp the sparse cold-end jaggedness while keeping the ecologically real sharp
+# warm-edge decline; any small AUC cost is reported honestly in models/metrics.json.
+MIN_SAMPLES_LEAF = 30      # approved range 20-40; raised from the sklearn default of 20
+L2_REGULARIZATION = 1.0    # small positive value; default is 0.0 (no shrinkage)
+
 
 def _assert_features_allowed(features: list[str]) -> None:
     """Fail loudly if latitude, longitude or year is among the model features."""
@@ -140,7 +160,11 @@ def train_species(frame: pd.DataFrame, species: str):
     """Train one HistGradientBoostingClassifier for `species`. Returns (model, metrics)."""
     X_train, y_train, X_test, y_test = split_species(frame, species)
 
-    model = HistGradientBoostingClassifier(random_state=RANDOM_STATE)
+    model = HistGradientBoostingClassifier(
+        random_state=RANDOM_STATE,
+        min_samples_leaf=MIN_SAMPLES_LEAF,     # task 3.1: smooth sparse-data leaves
+        l2_regularization=L2_REGULARIZATION,   # task 3.1: shrink spiky leaf values
+    )
     model.fit(X_train, y_train)
 
     # Test AUC. roc_auc_score needs both classes present in y_test.
@@ -161,6 +185,8 @@ def train_species(frame: pd.DataFrame, species: str):
         "test_auc": test_auc,
         "train_years": list(range(TRAIN_YEARS[0], TRAIN_YEARS[1] + 1)),
         "test_min_year": TEST_MIN_YEAR,
+        "min_samples_leaf": MIN_SAMPLES_LEAF,
+        "l2_regularization": L2_REGULARIZATION,
     }
     return model, metrics
 

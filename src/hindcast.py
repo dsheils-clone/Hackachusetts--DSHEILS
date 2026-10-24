@@ -63,7 +63,14 @@ from prepare_data import (
     TARGET_SPECIES,
     TOWS_PATH,
 )
-from train import FEATURES, LABEL, RANDOM_STATE, _assert_features_allowed
+from train import (
+    FEATURES,
+    L2_REGULARIZATION,
+    LABEL,
+    MIN_SAMPLES_LEAF,
+    RANDOM_STATE,
+    _assert_features_allowed,
+)
 
 # --- Paths ------------------------------------------------------------------
 
@@ -352,7 +359,14 @@ def train_early_model(early_tows: pd.DataFrame):
     X = early_tows[FEATURES].copy()
     y = early_tows[LABEL].astype(int)
     _assert_features_allowed(list(X.columns))
-    model = HistGradientBoostingClassifier(random_state=RANDOM_STATE)
+    # Same regularization as the forward models (task 3.1) so the hindcast stays
+    # methodologically consistent: min_samples_leaf + l2_regularization, NO monotonic
+    # constraint. Imported from train.py so there is a single source of truth.
+    model = HistGradientBoostingClassifier(
+        random_state=RANDOM_STATE,
+        min_samples_leaf=MIN_SAMPLES_LEAF,
+        l2_regularization=L2_REGULARIZATION,
+    )
     model.fit(X, y)
     return model
 

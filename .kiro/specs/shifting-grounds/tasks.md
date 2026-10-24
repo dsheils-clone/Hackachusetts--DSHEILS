@@ -38,6 +38,11 @@ The human does these steps outside Kiro:
   - Assert that latitude, longitude and year are not features
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
+- [x] 3.1 Regularize the habitat models to smooth the sparse-data temperature-response artifact
+  - Retrain all 6 HistGradientBoostingClassifier models with stronger regularization (raise min_samples_leaf to ~20-40, add l2_regularization) to damp the jagged cold-end oscillation seen in the SHAP temperature-response plot; NO monotonic constraint (keep possible cold optima); same 2 features (BOTTEMP, AVGDEPTH), same HGB model type, same 2009-2018 train / 2019+ test split
+  - Regenerate models/*.joblib + metrics.json, then re-run the dependent artifacts: hindcast (task 4.1, same regularization for its early-only models), grid_predictions.csv (task 5), lease_signals.csv (tasks 6.1/6.3); report before/after test AUC per species
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
 - [x] 4. Run the hindcast (45 min)
   - Implement run_hindcast() as described in design.md
   - Save predicted and observed shifts per species to data/processed/hindcast.csv

@@ -321,6 +321,13 @@
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792871191202
       }
+    ],
+    "3.1 Regularize the habitat models to smooth the sparse-data temperature-response artifact": [
+      {
+        "executionId": "5a6f2aa1-676f-4955-8ecb-286767b9b47b",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792872308529
+      }
     ]
   }
 }
