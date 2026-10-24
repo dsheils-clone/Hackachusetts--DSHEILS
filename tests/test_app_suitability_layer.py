@@ -143,16 +143,11 @@ def test_build_map_includes_suitability_layer_off_by_default(grid_preds, leases)
     fmap = app.build_map(
         leases, grid_change, selected_lease_id=None, grid_suitability=grid_suit
     )
-    html = fmap.get_root().render()
 
-    # The new suitability layer name is in the rendered LayerControl/overlay HTML.
-    assert "Habitat suitability (toggle)" in html
-    # The existing change layer and the lease layer still coexist.
-    assert "Habitat change (toggle)" in html
-    assert "Wind lease areas" in html
-
+    # Streamlit now drives layer visibility (no in-map folium LayerControl), so the layer
+    # names no longer appear in the rendered HTML; inspect the folium object tree instead.
     # The suitability FeatureGroup must be created with show=False (unchecked default),
-    # while the change layer stays show=True. Inspect the folium object tree.
+    # while the change layer stays show=True; the lease layer coexists.
     import folium
 
     feature_groups = {
@@ -160,19 +155,32 @@ def test_build_map_includes_suitability_layer_off_by_default(grid_preds, leases)
         for child in fmap._children.values()
         if isinstance(child, folium.FeatureGroup)
     }
-    assert "Habitat suitability (toggle)" in feature_groups
-    assert feature_groups["Habitat suitability (toggle)"].show is False
-    assert feature_groups["Habitat change (toggle)"].show is True
+    assert "Habitat suitability" in feature_groups
+    assert "Habitat change" in feature_groups
+    assert "Wind lease areas" in feature_groups
+    assert feature_groups["Habitat suitability"].show is False
+    assert feature_groups["Habitat change"].show is True
+
+    # And no competing in-map Leaflet layer control is added.
+    assert not any(
+        isinstance(child, folium.LayerControl) for child in fmap._children.values()
+    )
 
 
 def test_build_map_without_suitability_is_backward_compatible(grid_preds, leases):
     # Omitting grid_suitability keeps the original two-layer map (no new layer, no crash).
+    import folium
+
     species, delta = "scup", 2
     grid_change = app.grid_change_for(grid_preds, species, delta)
     fmap = app.build_map(leases, grid_change, selected_lease_id=None)
-    html = fmap.get_root().render()
-    assert "Habitat suitability (toggle)" not in html
-    assert "Habitat change (toggle)" in html
+    feature_groups = {
+        child.layer_name
+        for child in fmap._children.values()
+        if isinstance(child, folium.FeatureGroup)
+    }
+    assert "Habitat suitability" not in feature_groups
+    assert "Habitat change" in feature_groups
 
 
 if __name__ == "__main__":

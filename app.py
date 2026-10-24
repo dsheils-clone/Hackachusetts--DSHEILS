@@ -382,20 +382,32 @@ def build_map(
     grid_change: pd.DataFrame,
     selected_lease_id: str | None = None,
     grid_suitability: pd.DataFrame | None = None,
+    show_change: bool = True,
+    show_leases: bool = True,
+    show_suitability: bool = False,
 ):
     """Build the folium map: a smoother habitat-change surface under bold lease areas.
 
     Layering (bottom to top): OpenStreetMap basemap, then the habitat-change grid, then
-    an OPTIONAL raw habitat-suitability grid (off by default), then the wind lease areas
-    drawn as the bold foreground. A LayerControl lets the user hide the change grid or
-    opt into the suitability grid independently while the leases stay visible.
+    an OPTIONAL raw habitat-suitability grid, then the wind lease areas drawn as the bold
+    foreground.
+
+    Layer visibility is driven by STREAMLIT controls, not folium's in-map LayerControl.
+    The folium LayerControl was removed on purpose: st_folium cannot read the in-map
+    Leaflet control's toggle state back, so every rerun (e.g. changing the warming
+    segment) re-rendered the map with the layers in their DEFAULT states and silently
+    reset the user's manual toggles. Instead, Streamlit checkboxes backed by session
+    state decide visibility and pass it in here as ``show_change`` / ``show_leases`` /
+    ``show_suitability``; each FeatureGroup is created with ``show=`` set from the
+    matching flag, so the choices persist across reruns. Defaults preserve the original
+    behavior: change ON, leases ON, suitability OFF.
 
     Raw habitat-suitability layer (task 8.1, optional overlay -- OFF by default):
     - When ``grid_suitability`` is provided (one row per real 0.2-degree cell with
       lat_cell/lon_cell/suitability for the selected species + warming segment), an
-      ADDITIONAL FeatureGroup "Habitat suitability (toggle)" is added, created with
-      show=False so it is UNCHECKED by default. The viewer opts in from the layer
-      control; the change layer stays the default-visible one.
+      ADDITIONAL FeatureGroup "Habitat suitability" is added, created with
+      show=``show_suitability`` (default False, so UNCHECKED by default). The viewer opts
+      in via the Streamlit toggle; the change layer stays the default-visible one.
     - Each cell is colored by its RAW suitability in [0, 1] (probability of presence)
       with a SEQUENTIAL light->dark ramp (SUITABILITY_RAMP), distinct from the diverging
       change ramp. Honest labeling: the tooltip states it is predicted suitability
@@ -457,7 +469,7 @@ def build_map(
     FILL_PAD = CELL * 0.18  # ~0.036 deg of visual overlap on each side
 
     # --- Habitat-change grid (smoother look, one value per real cell) --------
-    grid_layer = folium.FeatureGroup(name="Habitat change (toggle)", show=True)
+    grid_layer = folium.FeatureGroup(name="Habitat change", show=show_change)
     for _, row in grid_change.iterrows():
         lat, lon = float(row["lat_cell"]), float(row["lon_cell"])
         abs_change = row["abs_change"]
@@ -488,13 +500,14 @@ def build_map(
     # --- Raw habitat-suitability grid (task 8.1, OPTIONAL overlay, OFF by default) ---
     # An ADDITIONAL toggleable layer that colors each real cell by its RAW predicted
     # suitability (probability of presence, 0-1) for the selected species + warming
-    # segment, with a SEQUENTIAL ramp distinct from the diverging change ramp above. It
-    # is created with show=False so it is UNCHECKED by default: the viewer opts in, and
-    # the change layer stays the default-visible one. One value per real cell (no
-    # interpolation); it reuses the same blur pane + fill pad for a consistent look.
+    # segment, with a SEQUENTIAL ramp distinct from the diverging change ramp above. Its
+    # visibility is driven by the Streamlit toggle (show_suitability, default False), so
+    # it is UNCHECKED by default: the viewer opts in, and the change layer stays the
+    # default-visible one. One value per real cell (no interpolation); it reuses the same
+    # blur pane + fill pad for a consistent look.
     if grid_suitability is not None and not grid_suitability.empty:
         suit_layer = folium.FeatureGroup(
-            name="Habitat suitability (toggle)", show=False
+            name="Habitat suitability", show=show_suitability
         )
         for _, row in grid_suitability.iterrows():
             lat, lon = float(row["lat_cell"]), float(row["lon_cell"])
@@ -517,7 +530,7 @@ def build_map(
         suit_layer.add_to(fmap)
 
     # --- Wind lease areas: the bold foreground layer -------------------------
-    lease_layer = folium.FeatureGroup(name="Wind lease areas", show=True)
+    lease_layer = folium.FeatureGroup(name="Wind lease areas", show=show_leases)
     for _, lease in leases.iterrows():
         is_selected = (
             selected_lease_id is not None and lease["lease_id"] == selected_lease_id
@@ -556,8 +569,10 @@ def build_map(
         ).add_to(lease_layer)
     lease_layer.add_to(fmap)
 
-    # Toggle: the grid can be hidden independently; the leases stay visible.
-    folium.LayerControl(collapsed=False).add_to(fmap)
+    # NOTE: no folium.LayerControl is added. Streamlit checkboxes (backed by session
+    # state) drive each FeatureGroup's show= flag, so layer visibility persists across
+    # reruns. An in-map Leaflet LayerControl would compete with those controls and its
+    # state is not readable back by st_folium (the bug this fix addresses).
     return fmap
 
 
@@ -1007,18 +1022,49 @@ def main() -> None:
                     f"{SPECIES_LABELS[species]} \u2014 change at +{float(sweep_delta):.1f} \u00b0C warming"
                 )
 
+            # --- Map layer toggles (Streamlit, backed by session state) --------
+            # These REPLACE folium's in-map LayerControl. st_folium cannot read the
+            # Leaflet control's toggle state back, so every rerun (e.g. changing the
+            # warming segment) re-rendered the map with the layers in their DEFAULT
+            # states and reset the user's manual toggles. Streamlit checkboxes keyed into
+            # session_state persist across reruns; we READ their return values and pass
+            # them into build_map as show flags. We deliberately do NOT write these
+            # widgets' own keys after they are instantiated (that is what raised the
+            # StreamlitWidgetAlreadyInstantiatedError before) -- Streamlit seeds each
+            # key's default from the checkbox `value=` on first run and then persists the
+            # user's choice. Defaults match the original behavior: change ON, leases ON,
+            # suitability OFF.
+            st.markdown("**Map layers**")
+            tog_change, tog_leases, tog_suit = st.columns(3)
+            show_change = tog_change.checkbox(
+                "Habitat change", value=True, key="layer_show_change"
+            )
+            show_leases = tog_leases.checkbox(
+                "Wind lease areas", value=True, key="layer_show_leases"
+            )
+            show_suitability = tog_suit.checkbox(
+                "Habitat suitability", value=False, key="layer_show_suitability"
+            )
+            st.caption(
+                "These toggles control which layers the map shows and persist as you "
+                "change the warming scenario or anything else on the page."
+            )
+
             # At +0 C the change is 0 everywhere by definition (baseline vs itself);
             # grid_change_for handles delta == 0 cleanly (scenario == baseline -> 0%).
             grid_change = grid_change_for(grid_preds, species, sweep_delta)
             # Raw habitat suitability for the SAME species + warming segment (task 8.1):
-            # the optional, off-by-default overlay in the layer control. One value per
-            # real cell, read straight from grid_predictions.csv (no retraining).
+            # the optional, off-by-default overlay. One value per real cell, read
+            # straight from grid_predictions.csv (no retraining).
             grid_suitability = suitability_for(grid_preds, species, sweep_delta)
             fmap = build_map(
                 leases,
                 grid_change,
                 selected_lease_id=lease_id,
                 grid_suitability=grid_suitability,
+                show_change=show_change,
+                show_leases=show_leases,
+                show_suitability=show_suitability,
             )
             # Capture lease clicks: st_folium returns the clicked object's tooltip (which
             # carries the lease id) and the click lat/lng. We stash the return under
@@ -1049,7 +1095,7 @@ def main() -> None:
                 "little change (saturates at \u00b10.30). Hover any cell for its "
                 "baseline \u2192 scenario values and both the absolute and percent "
                 "change. Wind lease areas are outlined in bold on top; the selected "
-                "lease is highlighted. Use the layer control (top right) to hide the "
+                "lease is highlighted. Use the **Map layers** toggles above to hide the "
                 "habitat grid and read the map."
             )
             st.caption(
@@ -1065,8 +1111,8 @@ def main() -> None:
                 "'Rising' on a tiny absolute move."
             )
             st.caption(
-                "Optional layer **Habitat suitability (toggle)** (off by default; turn "
-                "it on from the layer control) shades each cell by the model's RAW "
+                "Optional layer **Habitat suitability** (off by default; turn it on "
+                "with the **Map layers** toggle above) shades each cell by the model's RAW "
                 "predicted suitability for this species and warming segment on a "
                 "sequential scale (pale yellow \u2248 0 \u2192 dark red \u2248 1). This "
                 "is the probability the species is present (0\u20131) \u2014 **not** a "
