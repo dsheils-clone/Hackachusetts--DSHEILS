@@ -309,6 +309,13 @@
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792868214232
       }
+    ],
+    "8.1 Add a habitat-suitability heatmap layer to the map (do AFTER task 8)": [
+      {
+        "executionId": "24613d3d-8cfd-47ea-8937-04d7374f8a50",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792870583379
+      }
     ]
   }
 }

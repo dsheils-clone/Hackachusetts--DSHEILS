@@ -81,7 +81,7 @@ The human does these steps outside Kiro:
   - Fall back to the template sentence if the call fails
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 8.1 Add a habitat-suitability heatmap layer to the map (do AFTER task 8)
+- [x] 8.1 Add a habitat-suitability heatmap layer to the map (do AFTER task 8)
   - A toggleable map layer that colors each 0.2° cell by its raw predicted habitat suitability (0–1) for the selected species and warming segment, as a sequential heatmap, distinct from the existing change layer
   - Label it "habitat suitability" (probability of presence), NOT population/abundance; reads suitability directly from data/processed/grid_predictions.csv (no retraining); honest display-only, one value per real cell
   - _Requirements: 4.2, 4.3, 8.1_

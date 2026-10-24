@@ -117,6 +117,25 @@ SIGNAL_COLORS = {
 # meaningful shifts without a handful of extreme cells washing out the rest.
 ABS_CHANGE_SCALE = 0.30  # +/-0.30 suitability maps to full color saturation
 
+# Sequential heatmap ramp for RAW habitat suitability (task 8.1). This layer colors each
+# real 0.2-degree cell by its RAW predicted suitability in [0, 1] -- the probability the
+# species is present -- NOT population, abundance or fish counts (the model outputs
+# P(present) only, D-004/D-007). It is a separate, optional overlay from the diverging
+# blue/white/red CHANGE layer, so it uses a clean SEQUENTIAL palette (light -> dark) to
+# read as "low -> high suitability" and stay visually distinct from the change surface.
+#
+# Palette: a light-yellow -> orange -> dark-red "YlOrRd"-style sequential ramp. 0.0 maps
+# to the palest stop, 1.0 to the darkest. This is DISPLAY ONLY (it only sets how colors
+# spread across the real 0-1 range); it never changes a stored value, and there is one
+# value per real cell (no interpolation, same honest rule as the change layer).
+SUITABILITY_RAMP = [
+    (0.0, (255, 255, 204)),   # #ffffcc  pale yellow  (suitability ~0: unlikely present)
+    (0.25, (254, 217, 118)),  # #fed976  light orange
+    (0.5, (253, 141, 60)),    # #fd8d3c  orange
+    (0.75, (240, 59, 32)),    # #f03b20  red-orange
+    (1.0, (189, 0, 38)),      # #bd0026  dark red     (suitability ~1: likely present)
+]
+
 # The exact caption for the hindcast scatter (task 7 bullet; must not be reworded).
 HINDCAST_CAPTION = (
     "Trained on 2009\u20132015 only, then compared with what the survey saw from 2019 "
@@ -211,6 +230,26 @@ def grid_change_for(
     return merged
 
 
+def suitability_for(
+    grid_preds: pd.DataFrame, species: str, delta: int
+) -> pd.DataFrame:
+    """Per-cell RAW habitat suitability for one species at one warming delta.
+
+    Selects the rows for the given species and warming segment (delta in {0, 1, 2}) and
+    returns one row per real 0.2-degree cell with its lower-left corner (lat_cell,
+    lon_cell) and the model's RAW predicted suitability -- the probability the species is
+    present, in [0, 1]. This is read straight from grid_predictions.csv's ``suitability``
+    column (task 8.1): no retraining, no derived math, one value per real cell.
+
+    NOTE: ``suitability`` is P(present), NOT population, abundance or a fish count.
+    """
+    sub = grid_preds.loc[
+        (grid_preds["species"] == species) & (grid_preds["delta"] == delta),
+        ["lat_cell", "lon_cell", "suitability"],
+    ]
+    return sub.reset_index(drop=True)
+
+
 def _change_to_color(abs_change: float) -> str:
     """Map an ABSOLUTE suitability change to a diverging blue-white-red hex color.
 
@@ -290,17 +329,79 @@ def format_tooltip_change(baseline, scenario, abs_change, pct_change) -> str:
     return "<br>".join(parts)
 
 
+def _suitability_to_color(suitability: float) -> str:
+    """Map a RAW suitability in [0, 1] to a sequential light->dark hex color.
+
+    Interpolates along SUITABILITY_RAMP (pale yellow at 0 -> dark red at 1). This is a
+    DISPLAY-ONLY mapping of the stored probability to a color; it never changes a value.
+    NaN / missing -> grey. Values are clamped to [0, 1] (suitability is a probability).
+    """
+    if suitability is None or pd.isna(suitability):
+        return "#cccccc"
+    t = max(0.0, min(1.0, float(suitability)))
+    stops = SUITABILITY_RAMP
+    for i in range(len(stops) - 1):
+        t0, c0 = stops[i]
+        t1, c1 = stops[i + 1]
+        if t <= t1:
+            # Linear interpolation within this segment.
+            f = 0.0 if t1 == t0 else (t - t0) / (t1 - t0)
+            r = int(round(c0[0] + (c1[0] - c0[0]) * f))
+            g = int(round(c0[1] + (c1[1] - c0[1]) * f))
+            b = int(round(c0[2] + (c1[2] - c0[2]) * f))
+            return f"#{r:02x}{g:02x}{b:02x}"
+    r, g, b = stops[-1][1]
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def format_tooltip_suitability(suitability) -> str:
+    """Build the per-cell tooltip for the RAW habitat-suitability layer (HTML).
+
+    Honest labeling (task 8.1): the number is the model's predicted PROBABILITY OF
+    PRESENCE in [0, 1], NOT population, abundance or a fish count. Example output:
+    "Habitat suitability: 0.42 (probability of presence)".
+    """
+    if suitability is None or pd.isna(suitability):
+        val = "n/a"
+    else:
+        val = f"{float(suitability):.2f}"
+    return (
+        f"<span style='font-weight:700'>Habitat suitability: {val}</span>"
+        "<br><span style='font-size:0.85em;color:#555'>"
+        "probability of presence (0\u20131), not a population estimate</span>"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Map (folium)
 # ---------------------------------------------------------------------------
 
 
-def build_map(leases, grid_change: pd.DataFrame, selected_lease_id: str | None = None):
+def build_map(
+    leases,
+    grid_change: pd.DataFrame,
+    selected_lease_id: str | None = None,
+    grid_suitability: pd.DataFrame | None = None,
+):
     """Build the folium map: a smoother habitat-change surface under bold lease areas.
 
     Layering (bottom to top): OpenStreetMap basemap, then the habitat-change grid, then
-    the wind lease areas drawn as the bold foreground. A LayerControl lets the user hide
-    the grid independently while the leases stay visible.
+    an OPTIONAL raw habitat-suitability grid (off by default), then the wind lease areas
+    drawn as the bold foreground. A LayerControl lets the user hide the change grid or
+    opt into the suitability grid independently while the leases stay visible.
+
+    Raw habitat-suitability layer (task 8.1, optional overlay -- OFF by default):
+    - When ``grid_suitability`` is provided (one row per real 0.2-degree cell with
+      lat_cell/lon_cell/suitability for the selected species + warming segment), an
+      ADDITIONAL FeatureGroup "Habitat suitability (toggle)" is added, created with
+      show=False so it is UNCHECKED by default. The viewer opts in from the layer
+      control; the change layer stays the default-visible one.
+    - Each cell is colored by its RAW suitability in [0, 1] (probability of presence)
+      with a SEQUENTIAL light->dark ramp (SUITABILITY_RAMP), distinct from the diverging
+      change ramp. Honest labeling: the tooltip states it is predicted suitability
+      (probability of presence), NOT population, abundance or fish counts. Same honest
+      no-interpolation rule as the change layer: one value per real cell; the display-only
+      blur pane and fill pad are reused for a consistent smooth look.
 
     Habitat grid (honest, no interpolation):
     - Each real 0.2-degree cell (lower-left corner at lat_cell/lon_cell) is still drawn as
@@ -383,6 +484,37 @@ def build_map(leases, grid_change: pd.DataFrame, selected_lease_id: str | None =
             tooltip=tip,
         ).add_to(grid_layer)
     grid_layer.add_to(fmap)
+
+    # --- Raw habitat-suitability grid (task 8.1, OPTIONAL overlay, OFF by default) ---
+    # An ADDITIONAL toggleable layer that colors each real cell by its RAW predicted
+    # suitability (probability of presence, 0-1) for the selected species + warming
+    # segment, with a SEQUENTIAL ramp distinct from the diverging change ramp above. It
+    # is created with show=False so it is UNCHECKED by default: the viewer opts in, and
+    # the change layer stays the default-visible one. One value per real cell (no
+    # interpolation); it reuses the same blur pane + fill pad for a consistent look.
+    if grid_suitability is not None and not grid_suitability.empty:
+        suit_layer = folium.FeatureGroup(
+            name="Habitat suitability (toggle)", show=False
+        )
+        for _, row in grid_suitability.iterrows():
+            lat, lon = float(row["lat_cell"]), float(row["lon_cell"])
+            suit = row["suitability"]
+            color = _suitability_to_color(suit)
+            folium.Rectangle(
+                bounds=[
+                    [lat - FILL_PAD, lon - FILL_PAD],
+                    [lat + CELL + FILL_PAD, lon + CELL + FILL_PAD],
+                ],
+                color=color,
+                weight=1,
+                opacity=0.0,
+                fill=True,
+                fill_color=color,
+                fill_opacity=0.55,
+                pane="grid_pane",
+                tooltip=format_tooltip_suitability(suit),
+            ).add_to(suit_layer)
+        suit_layer.add_to(fmap)
 
     # --- Wind lease areas: the bold foreground layer -------------------------
     lease_layer = folium.FeatureGroup(name="Wind lease areas", show=True)
@@ -878,7 +1010,16 @@ def main() -> None:
             # At +0 C the change is 0 everywhere by definition (baseline vs itself);
             # grid_change_for handles delta == 0 cleanly (scenario == baseline -> 0%).
             grid_change = grid_change_for(grid_preds, species, sweep_delta)
-            fmap = build_map(leases, grid_change, selected_lease_id=lease_id)
+            # Raw habitat suitability for the SAME species + warming segment (task 8.1):
+            # the optional, off-by-default overlay in the layer control. One value per
+            # real cell, read straight from grid_predictions.csv (no retraining).
+            grid_suitability = suitability_for(grid_preds, species, sweep_delta)
+            fmap = build_map(
+                leases,
+                grid_change,
+                selected_lease_id=lease_id,
+                grid_suitability=grid_suitability,
+            )
             # Capture lease clicks: st_folium returns the clicked object's tooltip (which
             # carries the lease id) and the click lat/lng. We stash the return under
             # MAP_KEY so the reconciliation at the top of the tab can read it on the NEXT
@@ -922,6 +1063,14 @@ def main() -> None:
                 "Map shades by absolute change in suitability; the lease signal at "
                 "right uses percent change, so a near-zero-suitability area can read "
                 "'Rising' on a tiny absolute move."
+            )
+            st.caption(
+                "Optional layer **Habitat suitability (toggle)** (off by default; turn "
+                "it on from the layer control) shades each cell by the model's RAW "
+                "predicted suitability for this species and warming segment on a "
+                "sequential scale (pale yellow \u2248 0 \u2192 dark red \u2248 1). This "
+                "is the probability the species is present (0\u20131) \u2014 **not** a "
+                "population, abundance or fish-count estimate."
             )
 
         with col_panel:
