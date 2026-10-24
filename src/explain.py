@@ -8,17 +8,20 @@ Two pieces, both deliberately kept small and testable:
    in the app's "Temperature response" tab.
 
 2. **DeepSeek brief** -- ``brief(row)`` turns the already-computed numbers for one
-   (lease, species, warming scenario) plus the fixed suggestion text into 2-3 plain
-   sentences, via DeepSeek's OpenAI-compatible API. It NEVER crashes or hangs the app:
+   (lease, species, warming scenario) into 2-3 plain sentences that summarize ONLY what
+   those numbers show, via DeepSeek's OpenAI-compatible API. It NEVER crashes or hangs:
    the call is wrapped with a timeout and a broad try/except, and ANY failure (no key,
    network error, timeout, bad response) falls back to a deterministic template sentence
    built only from the numbers.
 
 Guardrails (.kiro/steering/workflow.md), enforced here:
-- Only computed numbers and the fixed suggestion text are ever sent to the LLM. The
-  prompt instructs the model to rephrase/summarize ONLY those -- no new facts, no causes,
-  no advice of its own. ``build_brief_prompt`` is a pure function so a test can assert
-  exactly what is sent.
+- Only computed numbers are ever sent to the LLM (a stricter subset of "only computed
+  numbers and the fixed suggestion text"). The prompt instructs the model to summarize
+  ONLY those -- no new facts, no causes, no advice of its own. The fixed suggestion text
+  is NOT sent to the model: the brief describes "what the numbers show", while the app
+  renders the suggestion ("what to consider") in a separate section, so the brief cannot
+  echo it and the two never duplicate on screen (human-approved fix). ``build_brief_prompt``
+  is a pure function so a test can assert exactly what is sent.
 - The brief stays in "change in fishing overlap / planning signal" framing. It must never
   describe results as harm to fish, nor as a build / don't-build verdict. The prompt says
   so explicitly and the template fallback is worded the same way.
@@ -166,26 +169,35 @@ def extract_context(row: Mapping[str, Any]) -> dict:
 # ---------------------------------------------------------------------------
 
 # The system instruction nails the two hard guardrails: use ONLY the supplied
-# numbers/suggestion (no invented facts, causes or advice), and keep the overlap framing
-# (never harm to fish, never a build / don't-build verdict).
+# numbers (no invented facts, causes or advice), and keep the overlap framing (never
+# harm to fish, never a build / don't-build verdict). The brief summarizes ONLY what the
+# numbers show; the fixed suggestion ("what to consider") is rendered in its own separate
+# section by the app and is deliberately NOT sent to the model, so the brief cannot echo
+# or restate it and the two sections never duplicate each other (human-approved, D-0xx).
 BRIEF_SYSTEM_PROMPT = (
     "You write a short planning note about one offshore wind lease area and one fish "
-    "species. Use ONLY the numbers and the suggestion provided. Do not add facts, "
-    "causes or advice of your own. Do not speculate about why the numbers change. "
-    "This shows change in fishing overlap, not harm to fish; never describe it as harm "
-    "to fish, and never give a build or do-not-build verdict. Write 2-3 plain sentences "
-    "for fishermen and planners."
+    "species. Use ONLY the numbers provided. Summarize only what those numbers show. Do "
+    "not add facts, causes or advice of your own. Do not speculate about why the numbers "
+    "change. Do not give any suggestions, recommendations or options to consider. This "
+    "shows change in fishing overlap, not harm to fish; never describe it as harm to "
+    "fish, and never give a build or do-not-build verdict. Write 2-3 plain sentences for "
+    "fishermen and planners."
 )
 
 
 def build_brief_prompt(context: Mapping[str, Any]) -> list[dict]:
     """Build the chat ``messages`` for the DeepSeek brief from a context dict.
 
-    Pure function: no network, no SDK. ``context`` is the output of ``extract_context``
-    (only computed numbers + the fixed suggestion text). The returned messages contain
-    NOTHING the model could mistake for a new fact -- just the labelled numbers and the
-    suggestion -- plus the explicit instruction to rephrase ONLY those. A unit test asserts
-    that only these values appear.
+    Pure function: no network, no SDK. ``context`` is the output of ``extract_context``.
+    The returned messages contain ONLY the labelled computed numbers -- NOTHING the model
+    could mistake for a new fact -- plus the explicit instruction to summarize ONLY those.
+
+    The fixed suggestion text is deliberately NOT included: the brief must describe only
+    "what the numbers show", and the app renders the suggestion ("what to consider") in a
+    separate section. Not feeding the suggestion to the model means it literally cannot
+    echo or restate it, so the brief and the Suggestion section never duplicate on screen
+    (human-approved fix; supersedes the design wording that had the brief include the
+    suggestion). A unit test asserts the suggestion does NOT appear in the prompt.
     """
     c = dict(context)
     user = (
@@ -197,11 +209,10 @@ def build_brief_prompt(context: Mapping[str, Any]) -> list[dict]:
         f"Signal: {c['signal']}\n"
         f"Model test AUC: {c['auc']}\n"
         f"Average annual fishing value from this area for this species "
-        f"(NOAA, last 5 years): {c['value']}\n"
-        f"Suggestion: {c['suggestion']}\n\n"
-        "Write 2-3 plain sentences for fishermen and planners, using only the numbers "
-        "and the suggestion above. Say that this shows change in fishing overlap, not "
-        "harm to fish. Do not add any other facts, causes, advice or verdicts."
+        f"(NOAA, last 5 years): {c['value']}\n\n"
+        "Write 2-3 plain sentences for fishermen and planners, summarizing only the "
+        "numbers above. Say that this shows change in fishing overlap, not harm to fish. "
+        "Do not add any other facts, causes, advice, suggestions or verdicts."
     )
     return [
         {"role": "system", "content": BRIEF_SYSTEM_PROMPT},
@@ -217,20 +228,21 @@ def build_brief_prompt(context: Mapping[str, Any]) -> list[dict]:
 def template_brief(context: Mapping[str, Any]) -> str:
     """The deterministic fallback sentence, built only from the computed numbers.
 
-    Matches design.md's fallback template, keeping the overlap framing (never harm to
+    Summarizes ONLY what the numbers show, keeping the overlap framing (never harm to
     fish, never a verdict). Shown verbatim whenever the DeepSeek call fails for ANY
     reason. ``context`` is the output of ``extract_context``.
+
+    It deliberately does NOT restate the fixed suggestion sentence: the app renders the
+    suggestion ("what to consider") in its own separate section, so appending it here
+    would duplicate it on screen (human-approved fix). The fallback therefore mirrors the
+    new numbers-only design of ``build_brief_prompt``.
     """
     c = dict(context)
-    sentence = (
+    return (
         f"{c['species'].capitalize()} habitat inside {c['lease']} changes by "
         f"{c['change']} at +{c['delta']}\u00b0C bottom temperature "
         f"({c['signal']}). This shows change in fishing overlap, not harm to fish."
     )
-    suggestion = c.get("suggestion", "")
-    if suggestion:
-        sentence = f"{sentence} {suggestion}"
-    return sentence
 
 
 # ---------------------------------------------------------------------------
@@ -259,10 +271,10 @@ def _make_client(api_key: str):
 def brief(row: Mapping[str, Any], client: Any = None) -> str:
     """Return a 2-3 sentence plain-English brief for one lease_signals row.
 
-    Calls DeepSeek with a prompt built ONLY from the computed numbers + the fixed
-    suggestion text. On ANY failure -- missing key, network error, timeout, empty/odd
-    response -- returns the deterministic ``template_brief`` instead, so the app never
-    crashes or hangs because of the LLM.
+    Calls DeepSeek with a prompt built ONLY from the computed numbers (the fixed
+    suggestion text is not sent). On ANY failure -- missing key, network error, timeout,
+    empty/odd response -- returns the deterministic ``template_brief`` instead, so the app
+    never crashes or hangs because of the LLM.
 
     ``client`` is injectable for testing (pass a stub); when None a real DeepSeek client
     is built from DEEPSEEK_API_KEY. A test monkeypatches this to assert the fallback path.

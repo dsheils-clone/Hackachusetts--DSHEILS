@@ -1,11 +1,11 @@
 """Tests for task 8 explanations (src/explain.py).
 
 These tests NEVER touch the network. They cover:
-- extract_context + build_brief_prompt: only the computed numbers and the fixed
-  suggestion text reach the prompt -- no invented facts, and the overlap-not-harm framing
-  is present.
-- template_brief: the deterministic fallback sentence reads from the numbers and keeps
-  the overlap framing.
+- extract_context + build_brief_prompt: only the computed numbers reach the prompt -- no
+  invented facts, the suggestion text is NOT sent (so the brief cannot restate it), and
+  the overlap-not-harm framing is present.
+- template_brief: the deterministic fallback sentence summarizes only the numbers, keeps
+  the overlap framing, and does NOT restate the suggestion.
 - brief(): returns the template when the API client raises (stubbed to raise) and when
   there is no API key, so the app can never crash or hang on the LLM.
 """
@@ -89,18 +89,31 @@ def test_extract_context_handles_no_data_and_tiny_baseline():
 # --- build_brief_prompt: ONLY numbers + suggestion, overlap framing ---------
 
 
-def test_build_brief_prompt_contains_only_supplied_values():
+def test_build_brief_prompt_contains_the_numbers():
     c = explain.extract_context(SAMPLE_ROW)
     messages = explain.build_brief_prompt(c)
     assert [m["role"] for m in messages] == ["system", "user"]
 
     user = messages[1]["content"]
-    # Every computed value and the suggestion appear in the user message.
+    # Every computed number appears in the user message.
     for value in (
         c["species"], c["lease"], c["delta"], c["baseline"], c["scenario"],
-        c["change"], c["signal"], c["auc"], c["value"], c["suggestion"],
+        c["change"], c["signal"], c["auc"], c["value"],
     ):
         assert value in user, f"missing {value!r} from prompt"
+
+
+def test_build_brief_prompt_does_not_include_the_suggestion():
+    # The brief summarizes only the numbers; the suggestion ("what to consider") is
+    # rendered in its own section by the app and is NOT fed to the model, so the brief
+    # cannot echo it and the two sections never duplicate on screen.
+    c = explain.extract_context(SAMPLE_ROW)
+    messages = explain.build_brief_prompt(c)
+    whole = messages[0]["content"] + "\n" + messages[1]["content"]
+    assert c["suggestion"] not in whole
+    # A distinctive phrase from the fixed suggestion must not leak in either.
+    assert "wider turbine spacing" not in whole
+    assert "Suggestion:" not in whole  # no suggestion field label in the prompt
 
 
 def test_build_brief_prompt_forbids_invented_facts_and_keeps_framing():
@@ -140,7 +153,15 @@ def test_template_brief_reads_from_numbers():
     assert "+2" in text and "\u00b0C" in text
     assert "Rising" in text
     assert "change in fishing overlap, not harm to fish" in text
-    assert c["suggestion"] in text  # the fixed suggestion is appended, not replaced
+
+
+def test_template_brief_does_not_restate_the_suggestion():
+    # The fallback summarizes only the numbers; it must NOT append/restate the fixed
+    # suggestion sentence, which the app shows in its own separate section (no duplication).
+    c = explain.extract_context(SAMPLE_ROW)
+    text = explain.template_brief(c)
+    assert c["suggestion"] not in text
+    assert "wider turbine spacing" not in text
 
 
 def test_template_brief_no_data_case():
