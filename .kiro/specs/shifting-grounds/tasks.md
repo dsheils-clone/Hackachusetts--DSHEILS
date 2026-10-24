@@ -60,7 +60,7 @@ The human does these steps outside Kiro:
   - [x] 6.3 Join the 5-year average value to each lease and species, showing "no data" when nothing matches; save data/processed/lease_signals.csv
     - _Requirements: 6.1, 6.3_
 
-- [ ] 7. Build the app: map, selectors and lease panel (2 h)
+- [x] 7. Build the app: map, selectors and lease panel (2 h)
   - Map with lease outlines and the grid colored by change for the selected species and scenario, using streamlit-folium
   - Species, scenario and lease selectors in the sidebar
   - Lease panel with signal, numbers, revenue and suggestion
