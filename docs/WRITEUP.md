@@ -1,4 +1,4 @@
-# Shifting Grounds
+# Thermocline
 
 Running Devpost draft. Kiro updates it when asked; edit freely.
 
@@ -8,7 +8,7 @@ Offshore wind farms are planned to run for decades, but fishing conflict is judg
 
 ## What it does
 
-Shifting Grounds projects where six commercially important species can live under +1°C and +2°C of bottom-water warming, and shows how their habitat inside each offshore wind lease area changes. Each lease and species gets a planning signal (rising, falling, stable or uncertain overlap) with the numbers behind it, NOAA's figure for current fishing value from that area, and a plain-English brief. A hindcast shows whether the model, trained on older years, predicted the shifts that actually happened.
+Thermocline projects where six commercially important species can live under +1°C and +2°C of bottom-water warming, and shows how their habitat inside each offshore wind lease area changes. Each lease and species gets a planning signal (rising, falling, stable or uncertain overlap) with the numbers behind it, NOAA's figure for current fishing value from that area, and a plain-English brief. A hindcast shows whether the model, trained on older years, predicted the shifts that actually happened.
 
 It shows change in fishing overlap, not harm to fish, and it gives planning signals rather than build-or-don't-build verdicts.
 

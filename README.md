@@ -1,6 +1,6 @@
-# Shifting Grounds
+# Thermocline
 
-Shifting Grounds trains one habitat model per species on NOAA's fall bottom trawl
+Thermocline trains one habitat model per species on NOAA's fall bottom trawl
 survey, using bottom temperature and depth. It re-predicts habitat on a grid under
 +1°C and +2°C warming, measures how habitat inside each active offshore wind lease
 changes, and labels the change as a planning signal. A Streamlit app shows the map,
@@ -73,7 +73,7 @@ streamlit run app.py
 ## Project structure
 
 ```text
-shifting-grounds/
+thermocline/
 ├── app.py                 # Streamlit app: map, selectors, lease panel, hindcast
 ├── src/                   # prepare_data, train, hindcast, scenarios, overlap, explain
 ├── data/

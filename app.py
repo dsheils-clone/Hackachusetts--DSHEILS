@@ -774,7 +774,7 @@ def main() -> None:
     import streamlit as st
     from streamlit_folium import st_folium
 
-    st.set_page_config(page_title="Shifting Grounds", layout="wide")
+    st.set_page_config(page_title="Thermocline", layout="wide")
 
     # --- App chrome styling (task 7.4 "polished & tasteful") ----------------
     # A single scoped CSS block that restyles only the app CHROME: tighter vertical
@@ -808,7 +808,7 @@ def main() -> None:
         .block-container { padding-top: 3.25rem !important; padding-bottom: 2rem; }
 
         /* Subtle slate header bar for the app title (tasteful, not a loud banner). */
-        h1#shifting-grounds, .stApp h1:first-of-type {
+        h1#thermocline, .stApp h1:first-of-type {
             color: var(--cornflower);
             font-size: 1.9rem !important;
             font-weight: 700;
@@ -936,7 +936,7 @@ def main() -> None:
     hindcast = _hindcast()
     leases = _leases()
 
-    st.title("Shifting Grounds")
+    st.title("Thermocline")
     st.caption(
         "How warming shifts commercial fish habitat, and how that changes overlap with "
         "offshore wind lease areas. A planning signal, not a verdict."
