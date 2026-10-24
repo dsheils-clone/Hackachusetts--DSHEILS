@@ -1,1 +1,26 @@
+# Secrets
 .env
+
+# Raw data (download steps are in README.md)
+data/raw/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter / tooling
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+
+# OS / editor
+.DS_Store

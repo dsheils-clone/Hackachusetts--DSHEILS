@@ -78,3 +78,10 @@ Decisions made before and during the build, oldest first. New entries follow the
 - Decision: Target species: longfin squid, summer flounder, black sea bass, scup, silver hake, Atlantic cod. Train 2009–2018, test 2019 onward; hindcast trains on 2009–2015. Grid 0.2° with at least 2 tows from 2016 onward. Signals: Stable within ±10%; Uncertain if AUC is below 0.70 or fewer than 20 tows from 2016 onward lie within 25 km of the lease. Skip species with fewer than 50 presences. Revenue is the 5-year average.
 - Why: Reasonable defaults for a first pass; all are constants that can be changed and logged.
 - Affects: design.md, src/train.py, src/hindcast.py, src/scenarios.py, src/overlap.py
+
+### D-012 · 10:39 · Use deepseek-chat instead of deepseek-flash
+- Decided by: human
+- Context: The spec and design default `DEEPSEEK_MODEL` to `deepseek-flash`, but the live .env already uses `deepseek-chat`.
+- Decision: Set `DEEPSEEK_MODEL=deepseek-chat` in .env.example and keep the real .env as-is.
+- Why: `deepseek-chat` is the cheaper model the human selected and matches the working key. Rejected: `deepseek-flash` (the spec default), to avoid a model-name mismatch at runtime.
+- Affects: .env.example, .env, src/explain.py (default model name)

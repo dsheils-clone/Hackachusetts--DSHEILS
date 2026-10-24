@@ -11,7 +11,7 @@ The human does these steps outside Kiro:
 - Before task 6: download BOEM's lease area shapefile into data/raw/boem/, and the NOAA wind area landings and value CSV (species view, all areas) into data/raw/revenue/.
 - Before task 8: add `DEEPSEEK_API_KEY` to .env.
 
-- [~] 1. Set up the project (20 min)
+- [x] 1. Set up the project (20 min)
   - Create the folder structure in design.md
   - Create requirements.txt: pandas, numpy, scikit-learn, shap, matplotlib, joblib, geopandas, shapely, pyproj, folium, streamlit, streamlit-folium, openai, python-dotenv
   - Create .gitignore covering data/raw/, .env and Python caches
