@@ -2,72 +2,79 @@
 
 Decisions made before and during the build, oldest first. New entries follow the format in .kiro/steering/workflow.md and continue numbering from the last entry.
 
-### D-001 · pre-event · Build an explainable interconnection-queue predictor
+### D-001 · pre-event · Pivot from Queue Odds to fisheries and offshore wind
 - Decided by: human
-- Context: Picking a project for the Hackachusetts energy/climate track.
-- Decision: Predict whether a queued power project reaches operation, and explain why in plain English.
-- Why: A large, well-understood problem with a free labeled dataset. Rejected: carbon-aware LLM routing (already demonstrated in published research), a utility bill decoder, and other consumer ideas.
+- Context: The climate track includes the sustainable blue economy, and fisheries plus offshore wind is a live Massachusetts issue.
+- Decision: Drop Queue Odds (interconnection-queue predictor) and build a fisheries and offshore wind tool. Keep Queue Odds as a backup.
+- Why: Stronger local angle and a clear climate link. Rejected: an economic exposure calculator without ML, and a "where to build" heat map framed as harm to fish.
 - Affects: whole project
 
-### D-002 · pre-event · Use Berkeley Lab Queued Up 2026 data
+### D-002 · pre-event · Forward-looking species habitat model as the core
 - Decided by: human
-- Context: Need labeled project outcomes.
-- Decision: Train on Berkeley Lab's Queued Up 2026 Edition, project-level data through 2025.
-- Why: Free under CC BY 4.0, and covers grid operators representing about 98% of US generating capacity. Rejected: paid commercial datasets.
-- Affects: src/prepare_data.py, README.md, app footer
+- Context: Wind farms run for decades while fish distributions shift; siting relies on past catch data.
+- Decision: Model where key species can live under warming and show how their overlap with wind lease areas changes.
+- Why: Puts ML at the center and fills a gap: prior work (Friedland et al. 2021) looked back rather than projecting forward.
+- Affects: whole project
 
-### D-003 · pre-event · Gradient boosting plus SHAP, no survival model
+### D-003 · pre-event · Data sources
 - Decided by: human
-- Context: Minimal ML experience and one day to build.
-- Decision: Use scikit-learn's HistGradientBoostingClassifier, with SHAP for per-project explanations.
-- Why: A few lines of code, handles mixed data types, works well without tuning. Rejected: survival analysis (harder to build and explain).
-- Affects: src/train.py, src/explain.py
+- Context: Need species occurrence with temperature, lease boundaries and revenue context.
+- Decision: NOAA NEFSC fall bottom trawl survey; BOEM lease area shapefile; NOAA GARFO wind area landings and value data.
+- Why: All free and public, and the survey records bottom temperature for every tow. Rejected: Global Fishing Watch vessel tracking (not needed for the core).
+- Affects: src/prepare_data.py, src/overlap.py, README.md, app footer
 
-### D-004 · pre-event · Label, features and split chosen to avoid leakage
+### D-004 · pre-event · Bottom temperature and depth as the only features
 - Decided by: human
-- Context: Many fields in the data reveal the outcome.
-- Decision: Operational = 1, withdrawn = 0; drop active and suspended projects; use only features known at queue entry; split by queue entry year; report AUC.
-- Why: Predictions must reflect what was knowable when a project entered the queue. Most projects fail, so accuracy would mislead.
-- Affects: src/prepare_data.py, src/train.py
+- Context: The model must be re-predicted under warming.
+- Decision: Use bottom temperature and depth; exclude latitude, longitude and year.
+- Why: Location features would let the model memorize places instead of learning temperature response. Friedland et al. (2021) found bottom temperature and depth the strongest predictors.
+- Affects: src/train.py
 
-### D-005 · pre-event · LLM explains only the SHAP factors
+### D-005 · pre-event · Use survey data from 2009 onward
 - Decided by: human
-- Context: LLM explanations can invent reasons.
-- Decision: Pass the top 3 SHAP factors to the LLM and instruct it to use nothing else.
-- Why: Keeps explanations tied to what the model actually used.
-- Affects: src/explain.py
+- Context: The survey changed vessels in 2009, and the released data isn't adjusted for gear or vessel changes.
+- Decision: Train and test on 2009 onward only.
+- Why: Keeps the data consistent at the cost of a shorter time span.
+- Affects: src/prepare_data.py
 
-### D-006 · pre-event · Position as free and transparent, focused on ISO-NE
+### D-006 · pre-event · Planning signals, not verdicts
 - Decided by: human
-- Context: Enverus and Pearl Street sell queue-success scores; Paces sells AI siting and permitting tools.
-- Decision: Pitch a free, explainable tool for the public, demoed on ISO New England and Massachusetts.
-- Why: The commercial tools are paywalled and aimed at developers and investors.
-- Affects: pitch, docs/WRITEUP.md
+- Context: The model predicts habitat, not harm from turbines, and offshore wind is politically contested.
+- Decision: Label each lease and species as Rising, Falling, Stable or Uncertain overlap, each with fixed suggestion text. Never say "don't build."
+- Why: Matches what the model can support and keeps the tool neutral.
+- Affects: src/overlap.py, app.py, src/explain.py
 
-### D-007 · pre-event · Bylaw reader as a secondary proof of concept
+### D-007 · pre-event · Uniform warming scenarios of +1°C and +2°C
 - Decided by: human
-- Context: The queue data doesn't record whether projects failed over local permitting.
-- Decision: Add an LLM bylaw reader for 3 Massachusetts towns, with quoted sections checked by the human. Not used as model features. If the model isn't working by the halfway point, the bylaw reader becomes the lead feature.
-- Why: Covers the model's blind spot and is timely given Massachusetts' new consolidated local permits. Kept secondary because it covers only hand-picked towns.
-- Affects: src/bylaws.py, app.py
+- Context: Need simple, explainable futures for a one-day build.
+- Decision: Add the same warming to every grid cell.
+- Why: Simple and transparent. Rejected: downscaled climate model projections (too much work for a day). Stated as a limit in the app.
+- Affects: src/scenarios.py, app.py
 
-### D-008 · pre-event · Solo build as one Streamlit app
+### D-008 · pre-event · Haiku subagents for data cleaning
 - Decided by: human
-- Context: Working alone.
-- Decision: One Streamlit app instead of a separate API and web frontend. Cut order if behind: bylaw reader, similar projects, what-if controls.
-- Why: Saves roughly 3–4 hours; the cost is a plainer look.
-- Affects: app.py, project structure
+- Context: Data cleaning is repetitive and well specified.
+- Decision: Delegate cleaning to a `data-cleaner` Kiro subagent running Claude Haiku; the main agent reviews its output.
+- Why: Faster and cheaper for routine work, with a review step to catch errors.
+- Affects: .kiro/agents/data-cleaner.json, tasks 2 and 6.2
 
-### D-009 · pre-event · Log decisions, write changelog entries and commit after every task
+### D-009 · pre-event · DeepSeek for the briefs
 - Decided by: human
-- Context: Want a traceable build and material for the Devpost writeup.
-- Decision: A Kiro steering file plus hooks enforce the decision log, changelog, writeup updates and a commit after each task.
-- Why: Keeps a record of why things changed and shows the work happened during the event.
-- Affects: .kiro/steering/workflow.md, .kiro/hooks/, docs/
+- Context: The app needs short plain-English briefs.
+- Decision: Use the DeepSeek API, with the key in .env and the model name configurable (default deepseek-flash).
+- Why: The human has a DeepSeek key.
+- Affects: src/explain.py, .env.example
 
-### D-010 · pre-event · Details added while writing the Kiro spec
-- Decided by: agent (Claude, while converting the plan into spec files)
-- Context: Turning the planning doc into Kiro spec files exposed a few gaps.
-- Decision: Show the SHAP factors as a plain list if the LLM call fails; make the data credit a requirement; use Census county centroids when projects lack coordinates; fall back to shap.Explainer if TreeExplainer rejects the model; save processed tables as CSV.
-- Why: Keeps the demo working when one piece fails, and meets the data license.
-- Affects: requirements.md (3.4, 6.3), design.md
+### D-010 · pre-event · Solo build as one Streamlit app with a lean workflow
+- Decided by: human
+- Context: Working alone for one day.
+- Decision: One Streamlit app; a steering file that logs decisions only when made, writes a changelog entry and commits after each task, with no hooks.
+- Why: Fewer moving parts and less agent overhead.
+- Affects: app.py, .kiro/steering/workflow.md
+
+### D-011 · pre-event · Details chosen while writing the spec
+- Decided by: agent (Claude, while writing the spec)
+- Context: The spec needed concrete starting values.
+- Decision: Target species: longfin squid, summer flounder, black sea bass, scup, silver hake, Atlantic cod. Train 2009–2018, test 2019 onward; hindcast trains on 2009–2015. Grid 0.2° with at least 2 tows from 2016 onward. Signals: Stable within ±10%; Uncertain if AUC is below 0.70 or fewer than 20 tows from 2016 onward lie within 25 km of the lease. Skip species with fewer than 50 presences. Revenue is the 5-year average.
+- Why: Reasonable defaults for a first pass; all are constants that can be changed and logged.
+- Affects: design.md, src/train.py, src/hindcast.py, src/scenarios.py, src/overlap.py
