@@ -43,7 +43,7 @@ The human does these steps outside Kiro:
   - Save predicted and observed shifts per species to data/processed/hindcast.csv
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 5. Build the grid and warming scenarios (1 h)
+- [x] 5. Build the grid and warming scenarios (1 h)
   - Build the 0.2° grid from 2016-onward tows, keeping cells with at least 2 tows
   - Predict suitability for every cell, species and scenario (+0, +1, +2°C)
   - Save data/processed/grid_predictions.csv
