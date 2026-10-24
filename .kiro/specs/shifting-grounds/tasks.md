@@ -72,12 +72,19 @@ The human does these steps outside Kiro:
     - _Requirements: 4.3, 8.1, 8.2_
   - [x] 7.2 Warming slider/animation: sweep +0 → +2°C showing the habitat change build up, framed as DEGREES OF WARMING not years (honest; only the +0/+1/+2°C scenarios the model produced, or clearly-labelled interpolation); its own human checkpoint
     - _Requirements: 4.2, 4.3, 8.1_
+  - [x] 7.3 Move the lease-area selector to the right panel (above the lease status) and make clicking a lease polygon on the map select it; map-click and dropdown stay in sync
+    - _Requirements: 6.2, 8.1, 8.3_
 
 - [ ] 8. Add explanations (1 h)
   - SHAP temperature response plot per species in a tab
   - Implement brief() with the DeepSeek prompt in design.md, reading DEEPSEEK_API_KEY and DEEPSEEK_MODEL from .env
   - Fall back to the template sentence if the call fails
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
+
+- [ ] 8.1 Add a habitat-suitability heatmap layer to the map (do AFTER task 8)
+  - A toggleable map layer that colors each 0.2° cell by its raw predicted habitat suitability (0–1) for the selected species and warming segment, as a sequential heatmap, distinct from the existing change layer
+  - Label it "habitat suitability" (probability of presence), NOT population/abundance; reads suitability directly from data/processed/grid_predictions.csv (no retraining); honest display-only, one value per real cell
+  - _Requirements: 4.2, 4.3, 8.1_
 
 - [ ] 9. Checkpoint: demo readiness (1 h)
   - Ask the human to click through the app and pick 2–3 showcase lease and species pairs; fix anything broken

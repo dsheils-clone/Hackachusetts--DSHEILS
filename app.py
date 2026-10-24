@@ -6,7 +6,9 @@ service in task 7 (the SHAP plot and the DeepSeek brief are task 8 -- see the cl
 marked seams below).
 
 Layout (design.md "## Components and Interfaces" -> app.py):
-- Sidebar: species, warming scenario (+1 / +2 C) and lease selectors.
+- Sidebar: species and warming scenario (+1 / +2 C) selectors. The lease-area selector
+  lives in the right panel of the Map tab (task 7.3), above the lease status it drives;
+  clicking a lease outline on the map selects it too, and the two stay in sync.
 - A folium map via streamlit-folium: active BOEM lease outlines plus the 0.2-degree
   grid colored by the PERCENT CHANGE in habitat suitability from the +0 C baseline to
   the selected warmed scenario, for the selected species. Diverging palette centered on
@@ -503,6 +505,84 @@ def lease_panel_row(
     return hit.iloc[0]
 
 
+def lease_id_from_tooltip(tooltip: str | None, valid_ids) -> str | None:
+    """Resolve a clicked lease's id from the folium tooltip text, or None.
+
+    Each lease GeoJson carries the tooltip ``"<lease_id> \u2014 <lease_name>"`` (see
+    build_map). When st_folium reports a clicked object's tooltip, we split on the em
+    dash, take the leading id, and only accept it if it is a known lease id. Returns
+    None for a missing/blank tooltip or an id we do not recognise (so a stray click on
+    the grid or basemap never selects a lease). ``valid_ids`` is the set/list of real
+    lease ids.
+    """
+    if not tooltip:
+        return None
+    text = str(tooltip).strip()
+    # The tooltip is "<id> \u2014 <name>"; the id is everything before the em dash.
+    head = text.split("\u2014", 1)[0].strip()
+    if head in set(valid_ids):
+        return head
+    # Some st_folium builds return only the visible text without the separator; fall
+    # back to matching the first whitespace token against the known ids.
+    token = text.split()[0] if text.split() else ""
+    return token if token in set(valid_ids) else None
+
+
+def lease_id_at_point(leases, lat, lng) -> str | None:
+    """Point-in-polygon fallback: which lon/lat lease polygon contains (lat, lng)?
+
+    ``leases`` is the lon/lat (EPSG:4326) GeoDataFrame from load_lease_outlines, so the
+    folium click's lat/lng can be tested directly. Returns the first containing lease's
+    id, or None when the click is outside every lease (e.g. on the grid or open water).
+    """
+    if lat is None or lng is None:
+        return None
+    try:
+        from shapely.geometry import Point
+    except ImportError:  # pragma: no cover - shapely is a hard dependency
+        return None
+    pt = Point(float(lng), float(lat))  # shapely is (x=lon, y=lat)
+    hit = leases.loc[leases.geometry.contains(pt)]
+    if not hit.empty:
+        return str(hit.iloc[0]["lease_id"])
+    # A click can land microscopically outside a border; take the nearest lease within a
+    # small tolerance (in degrees; these are lon/lat polygons) so edge clicks still
+    # select. The distance-in-a-geographic-CRS warning is expected and harmless here --
+    # we only need a tiny relative tolerance, not an accurate metric distance.
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        dist = leases.geometry.distance(pt)
+    nearest = dist.idxmin()
+    if float(dist.loc[nearest]) <= 0.02:  # ~2 km at this latitude
+        return str(leases.loc[nearest, "lease_id"])
+    return None
+
+
+def resolve_clicked_lease(st_folium_return, leases, valid_ids) -> str | None:
+    """Map an st_folium return dict to a clicked lease id (tooltip first, then PIP).
+
+    Reads ``last_object_clicked_tooltip`` for the fast, reliable path (the lease GeoJson
+    tooltips carry the id). If that does not resolve to a known lease, falls back to a
+    point-in-polygon hit test on ``last_object_clicked`` (or ``last_clicked``) lat/lng.
+    Returns None when nothing was clicked or the click was not on a lease.
+    """
+    if not st_folium_return:
+        return None
+    tip = st_folium_return.get("last_object_clicked_tooltip")
+    by_tip = lease_id_from_tooltip(tip, valid_ids)
+    if by_tip is not None:
+        return by_tip
+    click = (
+        st_folium_return.get("last_object_clicked")
+        or st_folium_return.get("last_clicked")
+    )
+    if isinstance(click, dict):
+        return lease_id_at_point(leases, click.get("lat"), click.get("lng"))
+    return None
+
+
 def format_revenue(avg_value) -> str:
     """Format the avg_value cell for display: '$N/yr' for a number, else 'no data'.
 
@@ -588,7 +668,9 @@ def main() -> None:
         format_func=lambda d: f"+{d} \u00b0C bottom temperature",
     )
 
-    # Lease options in a stable, readable order.
+    # Lease options in a stable, readable order. The lease-area SELECTOR itself lives in
+    # the right panel of the Map tab (not the sidebar) as of task 7.3; here we only build
+    # the option list and labels that both the dropdown and the map click resolve against.
     lease_options = (
         signals[["lease_id", "lease_name"]]
         .drop_duplicates()
@@ -596,11 +678,49 @@ def main() -> None:
     )
     lease_ids = lease_options["lease_id"].tolist()
     lease_label = dict(zip(lease_options["lease_id"], lease_options["lease_name"]))
-    lease_id = st.sidebar.selectbox(
-        "Lease area",
-        options=lease_ids,
-        format_func=lambda lid: f"{lid} \u2014 {lease_label.get(lid, '')}",
+
+    # --- Selected lease: the SINGLE SOURCE OF TRUTH -------------------------
+    # Both the right-panel dropdown and a map-polygon click WRITE this one non-widget
+    # session_state key. Keeping it off the selectbox's own widget key is what avoids the
+    # StreamlitWidgetAlreadyInstantiatedError (we never assign a widget key after the
+    # widget is built): the dropdown reads it via index=, the map click reconciles it
+    # BEFORE the dropdown is instantiated, and a dropdown change writes it back via
+    # on_change. Default to the first lease on first load.
+    if "selected_lease_id" not in st.session_state or (
+        st.session_state["selected_lease_id"] not in lease_ids
+    ):
+        st.session_state["selected_lease_id"] = lease_ids[0]
+
+    # --- Reconcile a map click from the PRIOR run ---------------------------
+    # st_folium reports a click on the run AFTER it happened, stored under its widget key
+    # (MAP_KEY). We read that stored return here, at the TOP of the map tab -- before the
+    # map is rebuilt and before the dropdown is instantiated -- so the clicked lease can
+    # drive both the highlight and the dropdown index on this run. We only mutate state +
+    # rerun when the clicked lease actually DIFFERS from the current selection, so a click
+    # (or a reselect of the already-selected lease) can never spin an infinite rerun loop.
+    MAP_KEY = "lease_map"
+    clicked_id = resolve_clicked_lease(
+        st.session_state.get(MAP_KEY), leases, lease_ids
     )
+    if clicked_id is not None and clicked_id != st.session_state["selected_lease_id"]:
+        st.session_state["selected_lease_id"] = clicked_id
+        # Also push the value onto the dropdown's widget key so the selectbox shows the
+        # clicked lease. This is SAFE because we are still BEFORE the selectbox is
+        # instantiated this run (the forbidden case -- and the earlier crash -- is
+        # writing a widget key AFTER its widget exists). index= alone would not move the
+        # dropdown here: once the widget key holds a value, Streamlit keeps it and
+        # ignores index=, so we must set the key directly.
+        st.session_state["lease_select_widget"] = clicked_id
+        st.rerun()
+
+    # The selection drives the map highlight and the panel for the rest of this run.
+    lease_id = st.session_state["selected_lease_id"]
+
+    def _on_lease_dropdown_change() -> None:
+        # The dropdown writes the SINGLE SOURCE OF TRUTH from its own (separate) widget
+        # key. Writing selected_lease_id here (a non-widget key) in an on_change callback
+        # is safe; we never write the widget's key after it is instantiated.
+        st.session_state["selected_lease_id"] = st.session_state["lease_select_widget"]
 
     # --- Tabs: map + lease panel, then hindcast -----------------------------
     tab_map, tab_hindcast = st.tabs(["Map & lease", "Hindcast"])
@@ -718,7 +838,22 @@ def main() -> None:
             # grid_change_for handles delta == 0 cleanly (scenario == baseline -> 0%).
             grid_change = grid_change_for(grid_preds, species, sweep_delta)
             fmap = build_map(leases, grid_change, selected_lease_id=lease_id)
-            st_folium(fmap, width=None, height=560, returned_objects=[])
+            # Capture lease clicks: st_folium returns the clicked object's tooltip (which
+            # carries the lease id) and the click lat/lng. We stash the return under
+            # MAP_KEY so the reconciliation at the top of the tab can read it on the NEXT
+            # run and sync selected_lease_id. returned_objects is no longer [] (which
+            # returned nothing) -- it now lists exactly the click fields we consume.
+            st_folium(
+                fmap,
+                width=None,
+                height=560,
+                key=MAP_KEY,
+                returned_objects=[
+                    "last_object_clicked",
+                    "last_object_clicked_tooltip",
+                    "last_clicked",
+                ],
+            )
 
             st.caption(
                 "Warming scenario, not a timeline \u2014 degrees of bottom-water warming "
@@ -742,8 +877,31 @@ def main() -> None:
                 "cells. The lease panel on the right still reports percent change and "
                 "the Rising/Falling/Stable/Uncertain signal."
             )
+            st.caption(
+                "Map shades by absolute change in suitability; the lease signal at "
+                "right uses percent change, so a near-zero-suitability area can read "
+                "'Rising' on a tiny absolute move."
+            )
 
         with col_panel:
+            # --- Lease-area selector (moved here from the sidebar, task 7.3) -----
+            # Sits ABOVE the lease status it controls. index= is derived from the single
+            # source of truth (selected_lease_id); the dropdown writes that key back via
+            # on_change (a SEPARATE widget key, lease_select_widget), so dropdown and map
+            # click stay in sync without ever writing the widget key after instantiation.
+            st.selectbox(
+                "Lease area",
+                options=lease_ids,
+                index=lease_ids.index(st.session_state["selected_lease_id"]),
+                format_func=lambda lid: f"{lid} \u2014 {lease_label.get(lid, '')}",
+                key="lease_select_widget",
+                on_change=_on_lease_dropdown_change,
+                help="Pick a lease, or click its outline on the map \u2014 they stay in sync.",
+            )
+            # The dropdown's on_change may have updated the selection; re-read it so the
+            # panel below (and this run's heading) reflect the current choice.
+            lease_id = st.session_state["selected_lease_id"]
+
             st.subheader(f"{lease_label.get(lease_id, lease_id)}")
             st.caption(f"Lease {lease_id}")
             row = lease_panel_row(signals, lease_id, species, delta)
@@ -766,6 +924,12 @@ def main() -> None:
                     f"Scenario (+{delta} \u00b0C)", format_suitability(row["scenario"])
                 )
                 c3.metric("Change", format_change(row["change"]))
+
+                st.caption(
+                    "Signal uses percent change (Stable within \u00b110%); the map "
+                    "shades by absolute change \u2014 the two can differ where baseline "
+                    "suitability is near zero."
+                )
 
                 st.metric(
                     "Avg annual fishing value (NOAA, last 5 yrs)",

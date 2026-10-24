@@ -282,6 +282,23 @@
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792866995502
       }
+    ],
+    "7.3 Move the lease-area selector to the right panel (above the lease status) and make clicking a lease polygon on the map select it; map-click and dropdown stay in sync": [
+      {
+        "executionId": "90a34866-ba86-4ab4-bd6e-ea91dd6d09db",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792867447158
+      },
+      {
+        "executionId": "6d5b3a2d-43c2-4b65-9e51-c07b42c20a6a",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792868146487
+      },
+      {
+        "executionId": "474f4ce9-98f9-45f1-badb-63be08794d86",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792868214232
+      }
     ]
   }
 }

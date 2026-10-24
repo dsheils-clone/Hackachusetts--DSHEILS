@@ -171,3 +171,10 @@ Decisions made before and during the build, oldest first. New entries follow the
 - Decision: Replace the slider/autoplay with a 3-segment control (+0/+1/+2 °C, active segment pressed/inset). Color the MAP by absolute change in suitability (±0.30 saturation); keep the LEASE PANEL on percent + the Rising/Falling/Stable/Uncertain signal (±10% thresholds, unchanged). Tooltip shows percent as a header capped at "250%+" with a small-font footer explaining low-baseline cells only when capped.
 - Why: Simpler, crash-free control; absolute change is an honest, bounded map metric; the cap keeps tooltips readable while the body keeps the real baseline→scenario numbers. Rejected: the slider/autoplay (fragile), and percent-change map coloring (small-denominator blow-up). Display-only — does not touch src/overlap.py thresholds or suggestion text.
 - Affects: app.py, tests/test_app_sweep_tooltip.py
+
+### D-025 · 14:55 · Lease selection: right-panel selector + map click-to-select; explain map-vs-signal mismatch rather than change the signal
+- Decided by: human + agent (task 7.3)
+- Context: The lease-area selector was in the sidebar; the human wanted it in the right panel and wanted clicking a lease on the map to select it. Separately, the map (absolute-change coloring) and the lease badge (percent-change signal) can appear to disagree because near-zero-baseline cells yield huge percents.
+- Decision: Move the selector to the right panel above the status; make map lease-clicks select the lease (tooltip id, point-in-polygon fallback), kept in sync with the dropdown via one non-widget state key. For the map-vs-signal mismatch, add explanatory captions only (Option A) — do NOT change the signal thresholds or logic.
+- Why: Better UX and the click interaction the human asked for; explaining the mismatch keeps the honest ±10% signal definition (D-006/D-011) intact rather than re-tuning guardrail-protected thresholds. Rejected: Option B (change the signal to ignore low-baseline cells) for now — it would re-generate lease_signals.csv and alter the spec's signal meaning.
+- Affects: app.py, tests/test_app_lease_selection.py
