@@ -1,0 +1,176 @@
+kind,noaa_name,maps_to,confidence,status,notes
+species,ALL_OTHERS,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,AMBER JACK,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"BASS,STRIPED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,BLUE RUNNER,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,BLUEFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,BONITO,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,BUTTERFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CLAM, SURF/BUSHEL",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CLAM,SURF",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,COBIA,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,COD,atlantic_cod,confident,DRAFT,Exact 1:1 match to one target species; see column_map.md.
+species,CONCHS,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CRAB,BLUE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CRAB,HORSESHOE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CRAB,JONAH",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CRAB,NK",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CRAB,RED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CRAB,ROCK",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,CREVALLE,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CROAKER,ATLANTIC",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,CRUSTACEANS NK,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,CUNNER,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,CUSK,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"CUTLASSFISH,ATLANTIC",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,DOGFISH SMOOTH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,DOGFISH SPINY,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,DOLPHINFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"DRUM,BLACK",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"EEL,AMERICAN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"EEL,CONGER",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"EEL,NK",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"FLOUNDER,AM. PLAICE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"FLOUNDER,FOURSPOT",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"FLOUNDER,SAND-DAB",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"FLOUNDER,SOUTHERN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"FLOUNDER,SUMMER",summer_flounder,confident,DRAFT,Exact 1:1 match to one target species; see column_map.md.
+species,"FLOUNDER,WINTER",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"FLOUNDER,WITCH",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"FLOUNDER,YELLOWTAIL",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"GOOSEFISH,BLACKFIN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,GROUPER,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"GROUPER,SNOWY",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,GRUNTS,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,HADDOCK,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,HAGFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HAKE,OFFSHORE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HAKE,RED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HAKE,SILVER",silver_hake,confident,DRAFT,Exact 1:1 match to one target species; see column_map.md.
+species,"HAKE,SPOTTED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HAKE,WHITE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HALIBUT,ATLANTIC",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,HARVEST FISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,HERRING (NK),,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HERRING,ATLANTIC",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HERRING,BLUE BACK",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"HERRING,ROUND",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,JOHN DORY,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"KINGFISH,NORTHERN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,LOBSTER,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"LOBSTER,SPINY",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"MACKEREL,ATLANTIC",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"MACKEREL,CHUB",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"MACKEREL,KING",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"MACKEREL,SPANISH",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,MENHADEN,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,MONKFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,MULLETS,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,OCTOPUS,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,OTHER FISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"PERCH,WHITE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,POLLOCK,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"PORGY,NK",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"PORGY,RED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"POUT,OCEAN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,PUFFER,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"PUFFER,NORTHERN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"QUAHOG,OCEAN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,QUAHOGS/BUSHEL,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"RAY,COWNOSE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,REDFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,RIBBONFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SCALLOP,BAY",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SCALLOP,SEA",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SCULPINS,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SCUP,scup,confident,DRAFT,Exact 1:1 match to one target species; see column_map.md.
+species,"SEA BASS,BLACK",black_sea_bass,confident,DRAFT,Exact 1:1 match to one target species; see column_map.md.
+species,SEA RAVEN,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SEA ROBIN,NORTHERN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SEA ROBIN,STRIPED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SEA ROBINS,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHAD,AMERICAN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHAD,HICKORY",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHARK,ATL SHARPNOSE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHARK,BLACK TIP",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHARK,MAKO SHORTFIN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHARK,PORBEAGLE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHARK,SPINNER",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHARK,THRESHER",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHARK,THRESHER UNC",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SHEEPSHEAD,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SHRIMP (MANTIS),,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SHRIMP (PANDALID),,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SHRIMP,BROWN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SKATE,BARNDOOR",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SKATE,CLEARNOSE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SKATE,LITTLE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SKATE,SMOOTH",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SKATE,THORNY",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"SKATE,WINTER(BIG)",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SKATES,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SNAPPER,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SPADEFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SPOT,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SQUID (ILLEX),,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SQUID (LONGFIN),longfin_squid,confident,DRAFT,Exact 1:1 match to one target species; see column_map.md.
+species,"STARGAZER,NORTHERN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,SWORDFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,TAUTOG,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TILEFISH,BLUELINE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TILEFISH,GOLDEN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TILEFISH,SAND",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,TRIGGERFISH,,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TRIGGERFISH,GRAY",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TROUT,STEELHEAD",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TUNA,ALBACORE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TUNA,BIG EYE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TUNA,BLUEFIN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TUNA,LITTLE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TUNA,SKIPJACK",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"TUNA,YELLOWFIN",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WEAKFISH,SPOTTED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WEAKFISH,SQUETEAGUE",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WHELK,CHANNELED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WHELK,KNOBBED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WHELK,LIGHTNING",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WHELK,WAVED",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WHITING,KING",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+species,"WOLFFISH,ATLANTIC",,not_target,DRAFT,Not one of the 6 target species; no revenue context used.
+area,OCS-A-0562,OCS-A 0562,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS-A-0563,,UNCERTAIN,DRAFT,Parses to OCS-A 0563 but no such lease in the BOEM outlines layer (45 leases); no overlap geometry to join to.
+area,OCS-A-0564,OCS-A 0564,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS-A-0565,,UNCERTAIN,DRAFT,Parses to OCS-A 0565 but no such lease in the BOEM outlines layer (45 leases); no overlap geometry to join to.
+area,OCS-A-0566,,UNCERTAIN,DRAFT,Parses to OCS-A 0566 but no such lease in the BOEM outlines layer (45 leases); no overlap geometry to join to.
+area,OCS-A-0567,OCS-A 0567,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS-A-0568,OCS-A 0568,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS-A-0569,,UNCERTAIN,DRAFT,Parses to OCS-A 0569 but no such lease in the BOEM outlines layer (45 leases); no overlap geometry to join to.
+area,OCS_A_0482,OCS-A 0482,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0483,OCS-A 0483,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0486,OCS-A 0486,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0487,OCS-A 0487,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0490,OCS-A 0490,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0497,OCS-A 0497,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0498,OCS-A 0498,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0499,OCS-A 0499,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0500,OCS-A 0500,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0501,OCS-A 0501,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0506,OCS-A 0506,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0508,OCS-A 0508,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0512,OCS-A 0512,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0517,OCS-A 0517,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0519,OCS-A 0519,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0520,OCS-A 0520,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0521,OCS-A 0521,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0522,OCS-A 0522,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0532,OCS-A 0532,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0534,OCS-A 0534,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0537,OCS-A 0537,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0538,OCS-A 0538,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0539,OCS-A 0539,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0541,OCS-A 0541,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0542,OCS-A 0542,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0544,OCS-A 0544,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0549,OCS-A 0549,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0557,OCS-A 0557,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).
+area,OCS_A_0558,OCS-A 0558,confident,DRAFT,Lease number matches a BOEM lease exactly (separators aside).

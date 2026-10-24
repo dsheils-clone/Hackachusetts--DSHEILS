@@ -56,6 +56,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 
 import geopandas as gpd
 import pandas as pd
@@ -79,6 +80,45 @@ LEASES_PATH = os.path.join(
 )
 # Written by task 6.3 (revenue join), not by this task.
 LEASE_SIGNALS_PATH = os.path.join(PROCESSED_DIR, "lease_signals.csv")
+
+# --- Revenue inputs/outputs (tasks 6.2 / 6.3) -------------------------------
+# NOAA GARFO "ALL_WEA_BY_AREA" landings-and-value export (2008-2025), one row per
+# (year, lease area, species). Lives under data/raw/ and is gitignored.
+REVENUE_PATH = os.path.join(
+    REPO_ROOT,
+    "data",
+    "raw",
+    "revenue",
+    "Landing and Revenue Data for Wind Energy Lease Areas, 2008-2025.csv",
+)
+# Cleaned, numeric per-(area, species, year) revenue table (written by task 6.2).
+REVENUE_CLEAN_PATH = os.path.join(PROCESSED_DIR, "revenue_clean.csv")
+# DRAFT name map (written by task 6.2, confirmed by the human before task 6.3 uses it).
+NAME_MAP_PATH = os.path.join(PROCESSED_DIR, "name_map.csv")
+
+# Number of most-recent available years to average for the revenue context (D-011:
+# "Revenue is the 5-year average"). The newest year in this export is 2025, so the
+# 5-year window is 2021-2025.
+REVENUE_AVG_YEARS = 5
+
+# --- Target-species name map: NOAA species name -> survey species key -------
+# Built in task 6.2 by matching the NOAA GARFO species names to the six TARGET_SPECIES
+# keys (see data/processed/column_map.md for the survey scientific/common names). Every
+# one of the six is an unambiguous 1:1 match to exactly one distinct NOAA name, so all
+# six are CONFIDENT. The NOAA export also carries ~132 other species we do not model;
+# they are intentionally left unmapped (dropped from the revenue context, reported, not
+# silently discarded). The ambiguity guardrail: if a target species had matched two or
+# more plausible NOAA names, or none, it would be left UNCERTAIN here for the human --
+# none did.
+SPECIES_NAME_MAP = {
+    # NOAA species name         # survey key        # NOAA distinct alternatives ruled out
+    "SQUID (LONGFIN)":  "longfin_squid",    # vs "SQUID (ILLEX)" (shortfin, a different squid)
+    "FLOUNDER,SUMMER":  "summer_flounder",  # unique among the many FLOUNDER,* names
+    "SEA BASS,BLACK":   "black_sea_bass",   # unique
+    "SCUP":             "scup",             # single SCUP row; the PORGY,* names are other species
+    "HAKE,SILVER":      "silver_hake",      # vs HAKE,WHITE / HAKE,RED / HAKE,OFFSHORE / HAKE,SPOTTED
+    "COD":              "atlantic_cod",     # single COD row, FMP "Northeast Multispecies" = Gadus morhua
+}
 
 # --- Locked-in constants (design.md "## Lease overlap signals" + D-006, D-011) ---
 # DO NOT change these without logging a decision in docs/DECISIONS.md
@@ -456,6 +496,246 @@ def lease_signals(
         ["lease_id", "species", "delta"]
     ).reset_index(drop=True)
     return signals
+
+
+# --- Revenue cleaning + draft name map (task 6.2) ---------------------------
+
+
+def _parse_money(series: pd.Series) -> pd.Series:
+    """Parse a '$1,234' / '1,234' money or count column to float.
+
+    Strips '$', thousands commas and surrounding whitespace, then coerces to numeric.
+    Blank/unparseable cells become NaN (reported by the caller, never silently zeroed).
+    """
+    cleaned = (
+        series.astype(str)
+        .str.replace(r"[\$,]", "", regex=True)
+        .str.strip()
+        .replace({"": None, "nan": None, "None": None})
+    )
+    return pd.to_numeric(cleaned, errors="coerce")
+
+
+def normalize_area_code(raw: str) -> str | None:
+    """Normalize a NOAA lease-area string to the BOEM ``lease_id`` spelling.
+
+    NOAA writes areas two ways in this export -- ``OCS-A-0562`` (dashes) and
+    ``OCS_A_0482`` (underscores) -- while BOEM's ``lease_id`` is ``OCS-A 0562``
+    (dash then space). We parse out the region letter and the numeric lease number
+    and re-emit the BOEM form, so the match is on the lease NUMBER, not on punctuation.
+    Returns None for anything that does not look like an OCS lease code (reported,
+    not guessed).
+    """
+    m = re.match(r"^OCS[-_ ]?([A-Za-z])[-_ ]?0*(\d+)\s*$", str(raw).strip())
+    if not m:
+        return None
+    letter = m.group(1).upper()
+    number = m.group(2).zfill(4)
+    return f"OCS-{letter} {number}"
+
+
+def clean_revenue(
+    path: str = REVENUE_PATH, verbose: bool = True
+) -> pd.DataFrame:
+    """Load and clean the NOAA GARFO wind-area revenue CSV (task 6.2).
+
+    Returns a tidy per-(area, species, year) table with numeric value and landings and a
+    ``lease_id`` column (the BOEM spelling, or NaN when the area has no BOEM match). No
+    rows are dropped silently: every filter prints a before/after count and a reason.
+
+    Columns out:
+      year, noaa_area, lease_id, noaa_species, nominal_value, value_2025, landings_lb
+    """
+
+    def log(msg: str) -> None:
+        if verbose:
+            print(msg)
+
+    raw = pd.read_csv(path, dtype=str)
+    n0 = len(raw)
+    log(f"[revenue] loaded {n0} rows from {os.path.basename(path)}")
+    log(f"[revenue] columns: {list(raw.columns)}")
+
+    df = pd.DataFrame(
+        {
+            "year": pd.to_numeric(raw["Year"], errors="coerce").astype("Int64"),
+            "noaa_area": raw["Lease Area"].astype(str).str.strip(),
+            "noaa_species": raw["Species"].astype(str).str.strip(),
+            "nominal_value": _parse_money(raw["Nominal Value ($)"]),
+            "value_2025": _parse_money(raw["Value (2025 dollars)"]),
+            "landings_lb": _parse_money(raw["Landings (pounds*)"]),
+        }
+    )
+
+    # Report numeric-parse gaps (kept as NaN, not dropped).
+    n_val_na = int(df["value_2025"].isna().sum())
+    n_year_na = int(df["year"].isna().sum())
+    log(
+        f"[revenue] numeric parse: {n_val_na} rows have no 2025-dollar value (NaN), "
+        f"{n_year_na} rows have an unparseable year (NaN). These are kept, not dropped."
+    )
+
+    # Attach the BOEM lease_id via number-based normalization.
+    df["lease_id"] = df["noaa_area"].map(normalize_area_code)
+    unmatched_areas = sorted(
+        df.loc[df["lease_id"].isna(), "noaa_area"].unique()
+    )
+    log(
+        f"[revenue] area match: {df['lease_id'].notna().sum()} rows carry a lease_id; "
+        f"{df['lease_id'].isna().sum()} rows have no recognizable OCS code"
+    )
+    if unmatched_areas:
+        log(f"[revenue]   un-normalizable area strings: {unmatched_areas}")
+
+    log(
+        f"[revenue] cleaned table: {len(df)} rows "
+        f"(no rows dropped; row count unchanged from {n0})"
+    )
+    return df
+
+
+def build_name_map(
+    revenue: pd.DataFrame,
+    leases: gpd.GeoDataFrame,
+    verbose: bool = True,
+) -> pd.DataFrame:
+    """Build the DRAFT data/processed/name_map.csv (task 6.2).
+
+    Two kinds of rows, one table (design.md "### Revenue join" -- a mapping table the
+    human confirms before the revenue join in task 6.3):
+
+      kind="species": NOAA species name -> survey species key (one row per distinct NOAA
+                       species; the six target species are mapped, the rest left blank).
+      kind="area":    NOAA lease area   -> BOEM lease_id (one row per distinct NOAA area).
+
+    Every row carries ``confidence`` ("confident" / "UNCERTAIN") and a ``notes`` column.
+    AMBIGUOUS matches are never guessed: they are emitted as UNCERTAIN with a note so the
+    human decides. This draft is explicitly unconfirmed -- the ``status`` column is
+    "DRAFT" on every row until the human confirms.
+    """
+
+    def log(msg: str) -> None:
+        if verbose:
+            print(msg)
+
+    rows: list[dict] = []
+
+    # --- Species rows --------------------------------------------------------
+    noaa_species = sorted(revenue["noaa_species"].dropna().unique())
+    mapped_species = 0
+    for name in noaa_species:
+        survey_key = SPECIES_NAME_MAP.get(name)
+        if survey_key is not None:
+            mapped_species += 1
+            rows.append(
+                {
+                    "kind": "species",
+                    "noaa_name": name,
+                    "maps_to": survey_key,
+                    "confidence": "confident",
+                    "status": "DRAFT",
+                    "notes": "Exact 1:1 match to one target species; see column_map.md.",
+                }
+            )
+        else:
+            # Not one of the six modelled species -> intentionally unmapped. Not an
+            # ambiguity; just outside scope. Recorded so nothing is dropped silently.
+            rows.append(
+                {
+                    "kind": "species",
+                    "noaa_name": name,
+                    "maps_to": "",
+                    "confidence": "not_target",
+                    "status": "DRAFT",
+                    "notes": "Not one of the 6 target species; no revenue context used.",
+                }
+            )
+
+    # --- Area rows -----------------------------------------------------------
+    boem_ids = set(leases["lease_id"].unique())
+    noaa_areas = sorted(revenue["noaa_area"].dropna().unique())
+    matched_areas = 0
+    for area in noaa_areas:
+        lease_id = normalize_area_code(area)
+        if lease_id is None:
+            rows.append(
+                {
+                    "kind": "area",
+                    "noaa_name": area,
+                    "maps_to": "",
+                    "confidence": "UNCERTAIN",
+                    "status": "DRAFT",
+                    "notes": "Could not parse an OCS lease code from this area string.",
+                }
+            )
+        elif lease_id in boem_ids:
+            matched_areas += 1
+            rows.append(
+                {
+                    "kind": "area",
+                    "noaa_name": area,
+                    "maps_to": lease_id,
+                    "confidence": "confident",
+                    "status": "DRAFT",
+                    "notes": "Lease number matches a BOEM lease exactly (separators aside).",
+                }
+            )
+        else:
+            # Parsed to a valid OCS code, but BOEM's outlines layer has no such lease.
+            # Confident it is NOT any of the 45 BOEM leases; left unmapped, flagged.
+            rows.append(
+                {
+                    "kind": "area",
+                    "noaa_name": area,
+                    "maps_to": "",
+                    "confidence": "UNCERTAIN",
+                    "status": "DRAFT",
+                    "notes": (
+                        f"Parses to {lease_id} but no such lease in the BOEM outlines "
+                        "layer (45 leases); no overlap geometry to join to."
+                    ),
+                }
+            )
+
+    name_map = pd.DataFrame(
+        rows, columns=["kind", "noaa_name", "maps_to", "confidence", "status", "notes"]
+    )
+
+    log(
+        f"[name_map] species rows: {len(noaa_species)} distinct NOAA species, "
+        f"{mapped_species} mapped to a target species, "
+        f"{len(noaa_species) - mapped_species} left unmapped (not targets)"
+    )
+    log(
+        f"[name_map] area rows: {len(noaa_areas)} distinct NOAA areas, "
+        f"{matched_areas} matched to a BOEM lease_id, "
+        f"{len(noaa_areas) - matched_areas} UNCERTAIN (no BOEM lease)"
+    )
+    return name_map
+
+
+def run_clean_revenue(verbose: bool = True) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Task 6.2 entry point: write the cleaned revenue table and the DRAFT name map.
+
+    Writes data/processed/revenue_clean.csv and data/processed/name_map.csv (DRAFT),
+    then STOPS. It does NOT run the revenue join (task 6.3) or mark the mapping confirmed.
+    Returns (cleaned_revenue, draft_name_map) for the main-agent review / human checkpoint.
+    """
+    print("=== Shifting Grounds: clean NOAA revenue + DRAFT name map (task 6.2) ===")
+    revenue = clean_revenue(verbose=verbose)
+    leases = load_leases()
+    name_map = build_name_map(revenue, leases, verbose=verbose)
+
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    revenue.to_csv(REVENUE_CLEAN_PATH, index=False)
+    name_map.to_csv(NAME_MAP_PATH, index=False)
+    print(f"[revenue] wrote cleaned revenue -> {REVENUE_CLEAN_PATH}")
+    print(f"[name_map] wrote DRAFT name map -> {NAME_MAP_PATH}")
+    print(
+        "[name_map] DRAFT and UNCONFIRMED: the revenue join (task 6.3) must wait until "
+        "the human confirms this mapping."
+    )
+    return revenue, name_map
 
 
 # --- Revenue join (task 6.3) ------------------------------------------------
