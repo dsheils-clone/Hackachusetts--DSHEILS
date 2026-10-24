@@ -98,3 +98,24 @@ Decisions made before and during the build, oldest first. New entries follow the
 - Decision: Filter purely by year window and use whatever years exist in each window: train picks up 2009–2018 (including partial 2017), test picks up 2019, 2021–2024 (no 2020). No imputation or reweighting for the missing/partial years.
 - Why: The windows are defined by year, so a missing or thin year just contributes fewer rows; it isn't an error. Train n=3232 and test n=1646 per species are ample. Rejected: dropping 2017 (loses real data) or synthesising 2020 (would fabricate observations).
 - Affects: src/train.py
+
+### D-015 · 11:59 · Active leases = the BOEM Offshore_Wind_Leases_outlines layer
+- Decided by: agent (task 6.1)
+- Context: design.md says "Load active lease areas from the BOEM shapefile. Use leases, not planning areas." The download has two lease layers: Offshore_Wind_Leases (4891 rows, one per sub-block, nationwide incl. CA/Pacific) and Offshore_Wind_Leases_outlines (51 rows, one dissolved polygon per issued lease with LEASE_NUMB, COMPANY, PROJECT_NA, ACRES). Neither has an explicit active/status field; the issued-lease dataset IS the set of active leases. A separate BOEM_MHKLeasesandPlanningAreas file holds planning areas and is not used.
+- Decision: Use the outlines layer as the active leases. Dissolve its polygons by LEASE_NUMB (a few leases — OCS-A 0498, 0501, 0497, 0517 — appear as several rows for main area plus export-cable/sub-block pieces) to get 45 unique leases, one geometry each. A lease that overlaps no grid cell is labelled Uncertain (design.md Error Handling); 9 leases (Gulf of Maine, Carolinas, Pacific) fall outside the survey footprint and come out Uncertain for that reason.
+- Why: The outlines layer gives one clean polygon and a project name per lease, matches design.md's app requirement for "lease outlines", and avoids the sub-block layer's nationwide 4891-row sprawl. Rejected: the full Offshore_Wind_Leases sub-block layer (would need its own dissolve and carries no project name), and the MHK planning-areas file (explicitly excluded by design.md).
+- Affects: src/overlap.py, app.py (task 7 lease outlines)
+
+### D-016 · 11:59 · Equal-area CRS (EPSG:5070) for area weights and the 25 km coverage test
+- Decided by: agent (task 6.1)
+- Context: design.md requires the lease suitability to be "weighted by overlap area" and the Uncertain rule to count tows "within 25 km". Both the BOEM shapefile and the grid are EPSG:4326 (lon/lat degrees), where a degree is not a constant area and cannot measure kilometres directly.
+- Decision: Reproject lease polygons and the 0.2° grid-cell squares to EPSG:5070 (NAD83 / CONUS Albers Equal Area, metres) before intersecting; do all intersection-area weighting and the point-to-polygon 25 km distance test in that metric CRS.
+- Why: CONUS Albers is the standard US equal-area projection and gives true areas and metric distances over the Atlantic shelf. Rejected: computing areas/distances in raw degrees (area varies with latitude; 25 km would be mis-measured) and a global projection like Web Mercator (badly area-distorted at these latitudes).
+- Affects: src/overlap.py
+
+### D-017 · 11:59 · Run the offline pipeline via the `shifting-grounds` conda env
+- Decided by: human + agent (task 6.1)
+- Context: geopandas 1.2 and its geospatial stack (shapely, pyproj, fiona) plus the ML/app libraries are installed in a dedicated conda env named `shifting-grounds`, not in the base interpreter.
+- Decision: Run all pipeline modules with `conda run -n shifting-grounds python src/<module>.py` (e.g. `conda run -n shifting-grounds python src/overlap.py`). Earlier changelog entries say `python3 src/...`; the conda-env form is the current, correct invocation.
+- Why: The base interpreter lacks geopandas/shapely, so plain `python3` would fail on src/overlap.py. Keeps the geospatial deps isolated. Affects how every script in the pipeline is launched.
+- Affects: src/overlap.py and all other src/*.py scripts; README.md (run steps, when next updated)

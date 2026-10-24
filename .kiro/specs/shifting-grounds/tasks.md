@@ -50,7 +50,7 @@ The human does these steps outside Kiro:
   - _Requirements: 4.1, 4.2_
 
 - [ ] 6. Compute lease signals and revenue context (1 h)
-  - [ ] 6.1 Load active leases; compute area-weighted suitability, percent change and signal with the thresholds and suggestion text in design.md
+  - [x] 6.1 Load active leases; compute area-weighted suitability, percent change and signal with the thresholds and suggestion text in design.md
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
   - [ ] 6.2 (data-cleaner subagent) Clean the NOAA revenue CSV and draft data/processed/name_map.csv matching NOAA species and area names to the survey species and BOEM leases; stop and ask the human to confirm the mapping
     - _Requirements: 6.1_
