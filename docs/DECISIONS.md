@@ -91,3 +91,10 @@ Decisions made before and during the build, oldest first. New entries follow the
 - Decision: Get FALL from CRUISES.SEASON joined on CRUISE6 (so task 2.3's "fall from 2009 onward" filters on season, not year alone). Use SVSPP 143 for scup (not 642, longspine porgy) and SVSPP 503 for longfin squid (excluding 520, egg mops).
 - Why: SVSTA alone can't identify fall tows, and a name-only lookup is ambiguous for scup and would double-count squid egg masses. Rejected: filtering by year only; matching species by common name. These flags are recorded in data/processed/column_map.md for the human to confirm at the 2.2 checkpoint.
 - Affects: data/processed/column_map.md, src/prepare_data.py (tasks 2.3/2.4)
+
+### D-014 · 11:03 · Split habitat models by year window, tolerating the 2020 gap and partial 2017
+- Decided by: agent (task 3)
+- Context: Training splits on EST_YEAR (train 2009–2018, test 2019 onward), but the survey has no 2020 tows (COVID gap) and 2017 is partial (117 vs ~350 tows/year).
+- Decision: Filter purely by year window and use whatever years exist in each window: train picks up 2009–2018 (including partial 2017), test picks up 2019, 2021–2024 (no 2020). No imputation or reweighting for the missing/partial years.
+- Why: The windows are defined by year, so a missing or thin year just contributes fewer rows; it isn't an error. Train n=3232 and test n=1646 per species are ample. Rejected: dropping 2017 (loses real data) or synthesising 2020 (would fabricate observations).
+- Affects: src/train.py

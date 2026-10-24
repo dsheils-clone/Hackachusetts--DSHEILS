@@ -23,3 +23,8 @@ One entry per commit, oldest first. Format: see .kiro/steering/workflow.md.
 - What changed: added build_presence()/save_presence() to src/prepare_data.py and wired them into main() so the script now regenerates both tows.csv and presence.csv. Built data/processed/presence.csv in long form (one row per tow+species): columns ID, species, SVSPP, present. Every tow is zero-filled across all 6 target species; present=1 when an SVCAT row exists for that ID with the matching SVSPP (collapsed across CATCHSEX). Longfin squid counts SVSPP 503 only and excludes 520 (egg mops, D-013).
 - How to check it: `python3 src/prepare_data.py` prints per-species presence counts and rates and asserts the invariant (29268 rows = 4878 tows x 6 species, every tow a row per species). presence.csv has 29268 data rows; rates: longfin squid 76.2%, silver hake 69.6%, summer flounder 27.1%, scup 25.3%, black sea bass 22.2%, Atlantic cod 12.4%. Cross-check: raw SVCAT has 3716 kept tows with 503 and 0 with 520.
 - Known issues: none. Cod's low rate (12.4%) is the intended cold-water contrast.
+
+### 11:03 · model(train): train habitat models for 6 species
+- What changed: Added src/train.py — one HistGradientBoostingClassifier per species on BOTTEMP + AVGDEPTH only (lat/lon/year asserted out), trained on EST_YEAR 2009–2018 and tested on 2019 onward. Wrote models/<species>.joblib and models/metrics.json (test AUC + train/test positive rate per species).
+- How to check it: `python3 src/train.py` then `cat models/metrics.json`; test AUCs range 0.78 (atlantic_cod) to 0.93 (longfin_squid), all well above 0.5.
+- Known issues: atlantic_cod has the weakest class balance (train pos 14.4%, test pos 8.3%) and the lowest AUC (0.784), as expected for the cold-water contrast species.

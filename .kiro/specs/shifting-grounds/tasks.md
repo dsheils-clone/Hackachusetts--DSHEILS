@@ -19,7 +19,7 @@ The human does these steps outside Kiro:
   - Write README.md with the data download steps and the data credits
   - _Requirements: 8.5_
 
-- [ ] 2. Clean and prepare the survey data (data-cleaner subagent) (1.5 h)
+- [x] 2. Clean and prepare the survey data (data-cleaner subagent) (1.5 h)
   - [x] 2.1 Inspect the SVSTA and SVCAT headers; map the real column names and species codes to design.md; write the mapping to data/processed/column_map.md
     - _Requirements: 1.1_
   - [x] 2.2 Checkpoint: stop and show the human the column mapping and species codes; continue only after they confirm
@@ -28,10 +28,10 @@ The human does these steps outside Kiro:
     - _Requirements: 1.1, 1.3_
   - [x] 2.4 Build the presence table: one row per tow and target species, zero-filled; save data/processed/presence.csv
     - _Requirements: 1.2_
-  - [ ] 2.5 Main agent review: report tows per year and presence rate per species; check every tow has a row for every species; flag anything odd to the human
+  - [x] 2.5 Main agent review: report tows per year and presence rate per species; check every tow has a row for every species; flag anything odd to the human
     - _Requirements: 1.4_
 
-- [ ] 3. Train the habitat models (1 h)
+- [x] 3. Train the habitat models (1 h)
   - Train one HistGradientBoostingClassifier per species on bottom temperature and depth
   - Train on 2009–2018, test on 2019 onward; save test AUC and class balance to models/metrics.json
   - Save each model to models/<species>.joblib

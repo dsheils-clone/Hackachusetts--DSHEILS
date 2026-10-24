@@ -1,0 +1,164 @@
+{
+  "longfin_squid": {
+    "species": "longfin_squid",
+    "svspp": "503",
+    "features": [
+      "BOTTEMP",
+      "AVGDEPTH"
+    ],
+    "n_train": 3232,
+    "n_test": 1646,
+    "train_positive_rate": 0.7586633663366337,
+    "test_positive_rate": 0.7679222357229648,
+    "test_auc": 0.9336333587381537,
+    "train_years": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "test_min_year": 2019,
+    "model_path": "models/longfin_squid.joblib"
+  },
+  "summer_flounder": {
+    "species": "summer_flounder",
+    "svspp": "103",
+    "features": [
+      "BOTTEMP",
+      "AVGDEPTH"
+    ],
+    "n_train": 3232,
+    "n_test": 1646,
+    "train_positive_rate": 0.26113861386138615,
+    "test_positive_rate": 0.2891859052247874,
+    "test_auc": 0.9158424908424908,
+    "train_years": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "test_min_year": 2019,
+    "model_path": "models/summer_flounder.joblib"
+  },
+  "black_sea_bass": {
+    "species": "black_sea_bass",
+    "svspp": "141",
+    "features": [
+      "BOTTEMP",
+      "AVGDEPTH"
+    ],
+    "n_train": 3232,
+    "n_test": 1646,
+    "train_positive_rate": 0.20482673267326731,
+    "test_positive_rate": 0.2551640340218712,
+    "test_auc": 0.9039268235842461,
+    "train_years": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "test_min_year": 2019,
+    "model_path": "models/black_sea_bass.joblib"
+  },
+  "scup": {
+    "species": "scup",
+    "svspp": "143",
+    "features": [
+      "BOTTEMP",
+      "AVGDEPTH"
+    ],
+    "n_train": 3232,
+    "n_test": 1646,
+    "train_positive_rate": 0.24288366336633663,
+    "test_positive_rate": 0.27217496962332927,
+    "test_auc": 0.8971127474362033,
+    "train_years": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "test_min_year": 2019,
+    "model_path": "models/scup.joblib"
+  },
+  "silver_hake": {
+    "species": "silver_hake",
+    "svspp": "072",
+    "features": [
+      "BOTTEMP",
+      "AVGDEPTH"
+    ],
+    "n_train": 3232,
+    "n_test": 1646,
+    "train_positive_rate": 0.7035891089108911,
+    "test_positive_rate": 0.6822600243013366,
+    "test_auc": 0.8390518772272441,
+    "train_years": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "test_min_year": 2019,
+    "model_path": "models/silver_hake.joblib"
+  },
+  "atlantic_cod": {
+    "species": "atlantic_cod",
+    "svspp": "073",
+    "features": [
+      "BOTTEMP",
+      "AVGDEPTH"
+    ],
+    "n_train": 3232,
+    "n_test": 1646,
+    "train_positive_rate": 0.14449257425742573,
+    "test_positive_rate": 0.08323207776427703,
+    "test_auc": 0.7840185166374019,
+    "train_years": [
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018
+    ],
+    "test_min_year": 2019,
+    "model_path": "models/atlantic_cod.joblib"
+  }
+}
