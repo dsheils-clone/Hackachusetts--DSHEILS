@@ -45,11 +45,13 @@ equal-area projection, EPSG:5070 (NAD83 / CONUS Albers), before intersecting and
 measuring the 25 km survey-coverage distance (D-016). All geometric area and distance math
 happens in that metric CRS.
 
-Task 6.3 will EXTEND this module with join_revenue(); this file deliberately stops at the
-signals and leaves a documented stub for it.
+Task 6.3 EXTENDS this module with join_revenue(): it attaches the most-recent-5-years
+average NOAA annual value to each (lease, species) signal row through the human-confirmed
+data/processed/name_map.csv, showing "no data" (not 0) when nothing matches, and main()
+writes the full table to data/processed/lease_signals.csv.
 
-Output (written by task 6.3, not here): data/processed/lease_signals.csv. Task 6.1 only
-computes the signals DataFrame and reports it.
+Output: data/processed/lease_signals.csv -- the per-(lease, species, scenario) table the
+app reads: the signal + numbers + the 5-year revenue value + the fixed suggestion.
 """
 
 from __future__ import annotations
@@ -188,7 +190,13 @@ SIGNAL_COLUMNS = [
     "auc",             # species test AUC (for the brief + Uncertain rule)
     "n_cells",         # grid cells the lease overlaps
     "n_nearby_tows",   # 2016+ tows within 25 km (for the Uncertain rule)
+    "avg_value",       # 5-year avg NOAA annual value (task 6.3), or "no data" (D-021)
 ]
+
+# The columns lease_signals() itself produces (everything except the revenue column, which
+# join_revenue() appends in task 6.3). Keeping this separate from SIGNAL_COLUMNS means the
+# signals table carries no empty avg_value placeholder that would collide in the merge.
+_SIGNAL_ONLY_COLUMNS = [c for c in SIGNAL_COLUMNS if c != "avg_value"]
 
 
 # --- Loaders ----------------------------------------------------------------
@@ -375,7 +383,8 @@ def lease_signals(
 
     Uncertain is decided first (low AUC, fewer than 20 nearby 2016+ tows, or no overlap);
     otherwise the signal comes from the percent-change thresholds. Species with fewer than
-    MIN_PRESENCES presences are skipped entirely. Returns a DataFrame with SIGNAL_COLUMNS.
+    MIN_PRESENCES presences are skipped entirely. Returns a DataFrame with the signal
+    columns (SIGNAL_COLUMNS minus avg_value, which join_revenue() appends in task 6.3).
     """
 
     def log(msg: str) -> None:
@@ -491,7 +500,7 @@ def lease_signals(
                     }
                 )
 
-    signals = pd.DataFrame(rows, columns=SIGNAL_COLUMNS)
+    signals = pd.DataFrame(rows, columns=_SIGNAL_ONLY_COLUMNS)
     signals = signals.sort_values(
         ["lease_id", "species", "delta"]
     ).reset_index(drop=True)
@@ -740,24 +749,145 @@ def run_clean_revenue(verbose: bool = True) -> tuple[pd.DataFrame, pd.DataFrame]
 
 # --- Revenue join (task 6.3) ------------------------------------------------
 
+# How the revenue column shows "no revenue matched" (design.md "### Revenue join":
+# 'Show "no data" when nothing matches'; requirement 6.3: show "no data" rather than
+# zero). A literal string, NOT 0 or NaN, so the app never displays a misleading $0 for a
+# species NOAA never reported in that area (e.g. confidentiality-suppressed "ALL OTHERS"
+# fleets, a species not landed there, or a lease with no NOAA revenue area at all).
+NO_REVENUE = "no data"
 
-def join_revenue(signals, revenue, name_map):  # noqa: ANN001
-    """Join the 5-year average NOAA value to each lease and species (TASK 6.3).
+# Which money column to average. revenue_clean.csv carries both the nominal dollars of
+# each year and value_2025 (the same dollars inflation-adjusted to 2025). Averaging across
+# a multi-year window mixes dollars from different years, so we average the inflation-
+# adjusted column to keep the five years comparable (D-021). Column name from clean_revenue().
+REVENUE_VALUE_COLUMN = "value_2025"
 
-    Intentionally not implemented in task 6.1. Task 6.3 will add the revenue column and
-    the "no data" handling, then write data/processed/lease_signals.csv. See design.md
-    "### Revenue join".
+
+def average_recent_value(
+    revenue: pd.DataFrame,
+    name_map: pd.DataFrame,
+    years: int = REVENUE_AVG_YEARS,
+    value_column: str = REVENUE_VALUE_COLUMN,
+    verbose: bool = True,
+) -> tuple[pd.DataFrame, list[int]]:
+    """Average each (lease_id, survey species) value over the most recent ``years``.
+
+    design.md "### Revenue join": "take value by lease area, species and year. Average the
+    most recent 5 years available." We translate the NOAA names to our own keys through the
+    CONFIRMED name_map (NOAA species name -> survey species key; NOAA area -> BOEM lease_id),
+    keep only rows that carry both a target species and a real BOEM lease, restrict to the
+    most recent ``years`` distinct years PRESENT in the data, and take the mean annual value
+    per (lease_id, species).
+
+    Returns (per-(lease_id, species) mean-value table, the list of years averaged).
     """
-    raise NotImplementedError(
-        "join_revenue is implemented in task 6.3, not task 6.1."
+
+    def log(msg: str) -> None:
+        if verbose:
+            print(msg)
+
+    # --- Confirmed lookups from the (human-confirmed) name_map ---------------
+    species_rows = name_map.loc[
+        (name_map["kind"] == "species")
+        & (name_map["confidence"] == "confident")
+        & name_map["maps_to"].astype(str).str.len().gt(0)
+    ]
+    species_lookup = dict(zip(species_rows["noaa_name"], species_rows["maps_to"]))
+
+    area_rows = name_map.loc[
+        (name_map["kind"] == "area")
+        & (name_map["confidence"] == "confident")
+        & name_map["maps_to"].astype(str).str.len().gt(0)
+    ]
+    area_lookup = dict(zip(area_rows["noaa_name"], area_rows["maps_to"]))
+    log(
+        f"[revenue-join] confirmed name_map: {len(species_lookup)} target species, "
+        f"{len(area_lookup)} NOAA areas -> BOEM lease_id"
     )
+
+    df = revenue.copy()
+    # Map NOAA names to our keys. Rows without a target species or a BOEM lease fall out of
+    # the join (they become "no data" downstream) -- never silently counted as zero.
+    df["species"] = df["noaa_species"].map(species_lookup)
+    df["join_lease_id"] = df["noaa_area"].map(area_lookup)
+    joined = df.loc[df["species"].notna() & df["join_lease_id"].notna()].copy()
+    log(
+        f"[revenue-join] {len(joined)} of {len(df)} revenue rows carry both a target "
+        f"species and a BOEM lease (rest are non-target species / unmatched areas)"
+    )
+
+    # --- Most recent N years PRESENT in the joined revenue -------------------
+    present_years = sorted(int(y) for y in joined["year"].dropna().unique())
+    window_years = present_years[-years:] if present_years else []
+    log(
+        f"[revenue-join] most recent {years} years available: {window_years} "
+        f"(of {present_years[0] if present_years else '-'}..{present_years[-1] if present_years else '-'})"
+    )
+    in_window = joined.loc[joined["year"].isin(window_years)].copy()
+
+    # --- Mean annual value per (lease_id, species) ---------------------------
+    # Mean over the window's rows == mean annual value per (lease, species): the NOAA export
+    # has at most one row per (lease, species, year), so this averages across the years that
+    # actually have a value (a year with no landing simply does not contribute a row).
+    grouped = (
+        in_window.groupby(["join_lease_id", "species"], as_index=False)[value_column]
+        .mean()
+        .rename(columns={"join_lease_id": "lease_id", value_column: "avg_value"})
+    )
+    log(
+        f"[revenue-join] {len(grouped)} (lease, species) pairs have a {years}-year "
+        f"average value from {window_years}"
+    )
+    return grouped, window_years
+
+
+def join_revenue(signals, revenue, name_map, verbose: bool = True):  # noqa: ANN001
+    """Join the 5-year average NOAA value to each lease-signal row (TASK 6.3).
+
+    Attaches an ``avg_value`` column to every signal row: the most-recent-5-years average
+    NOAA annual value for that (lease_id, species), or the string "no data" when nothing
+    matches (design.md "### Revenue join"; requirement 6.3 -- "no data" rather than zero).
+    "No data" covers every miss: the species was never landed/reported in that lease area
+    (incl. NOAA's confidentiality-suppressed fleets), or the lease has no NOAA revenue area
+    at all (e.g. the 9 leases outside the NOAA export, or the 4 NOAA areas with no BOEM
+    lease). Returns a new DataFrame with SIGNAL_COLUMNS in order (avg_value last).
+    """
+
+    def log(msg: str) -> None:
+        if verbose:
+            print(msg)
+
+    grouped, window_years = average_recent_value(revenue, name_map, verbose=verbose)
+
+    # Left-join onto the signals so every (lease, species, scenario) row is kept.
+    merged = signals.merge(grouped, on=["lease_id", "species"], how="left")
+
+    # Encode misses as "no data" (string), matched rows keep the numeric mean. Mixing a
+    # string sentinel into a numeric column makes it object dtype -- intended: the app
+    # prints the number when present and the literal "no data" otherwise.
+    matched = merged["avg_value"].notna()
+    merged["avg_value"] = merged["avg_value"].where(matched, NO_REVENUE)
+
+    # Count matched vs no-data at the (lease, species) grain (not per scenario row).
+    pair = merged[["lease_id", "species", "avg_value"]].drop_duplicates(
+        ["lease_id", "species"]
+    )
+    n_pairs = len(pair)
+    n_matched_pairs = int((pair["avg_value"] != NO_REVENUE).sum())
+    log(
+        f"[revenue-join] {n_matched_pairs} of {n_pairs} (lease, species) pairs got a "
+        f"revenue value; {n_pairs - n_matched_pairs} are \"{NO_REVENUE}\" "
+        f"(5-year window {window_years})"
+    )
+
+    return merged[SIGNAL_COLUMNS]
 
 
 # --- Script entry point -----------------------------------------------------
 
 
 def main() -> None:
-    print("=== Shifting Grounds: lease overlap signals (task 6.1) ===")
+    print("=== Shifting Grounds: lease overlap signals + revenue join (tasks 6.1 + 6.3) ===")
     print(
         f"[overlap] thresholds: Rising >= +{RISING_THRESHOLD:.0%}, "
         f"Falling <= {FALLING_THRESHOLD:.0%}, Stable in between; "
@@ -802,10 +932,35 @@ def main() -> None:
             f"{r['species']:>16}: {base} -> {scen} ({chg}) [{r['signal']}]"
         )
 
+    # --- Revenue join (task 6.3) --------------------------------------------
+    print("[revenue-join] joining the 5-year average NOAA value to each signal row")
+    revenue = pd.read_csv(REVENUE_CLEAN_PATH)
+    name_map = pd.read_csv(NAME_MAP_PATH, keep_default_na=False)
+    lease_signals_table = join_revenue(signals, revenue, name_map)
+
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    lease_signals_table.to_csv(LEASE_SIGNALS_PATH, index=False)
     print(
-        "[overlap] NOTE: data/processed/lease_signals.csv is written by task 6.3 "
-        "(revenue join); task 6.1 computes the signals only."
+        f"[revenue-join] wrote {len(lease_signals_table)} rows "
+        f"({lease_signals_table.shape[1]} columns) -> {LEASE_SIGNALS_PATH}"
     )
+
+    # A couple of concrete matched + no-data examples at +2 deg C.
+    plus2 = lease_signals_table.loc[lease_signals_table["delta"] == 2]
+    with_rev = plus2.loc[plus2["avg_value"] != NO_REVENUE]
+    no_rev = plus2.loc[plus2["avg_value"] == NO_REVENUE]
+    print("[revenue-join] example rows WITH a 5-year value (+2 deg C):")
+    for _, r in with_rev.head(5).iterrows():
+        print(
+            f"         {r['lease_id']:>11} {r['species']:>16} "
+            f"[{r['signal']:>9}]  ${float(r['avg_value']):,.0f}/yr"
+        )
+    print("[revenue-join] example rows with NO revenue match (+2 deg C):")
+    for _, r in no_rev.head(5).iterrows():
+        print(
+            f"         {r['lease_id']:>11} {r['species']:>16} "
+            f"[{r['signal']:>9}]  {r['avg_value']}"
+        )
 
 
 if __name__ == "__main__":

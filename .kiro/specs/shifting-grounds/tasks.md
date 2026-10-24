@@ -42,7 +42,7 @@ The human does these steps outside Kiro:
   - Implement run_hindcast() as described in design.md
   - Save predicted and observed shifts per species to data/processed/hindcast.csv
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
-  - [-] 4.1 Revise hindcast per docs/HINDCAST_BRIEF.md
+  - [x] 4.1 Revise hindcast per docs/HINDCAST_BRIEF.md
     - Same shared cells and presence-rate metric for predicted and observed; along-shelf axis plus depth; 200-replicate bootstrap 90% intervals; per-species verdicts; extrapolation diagnostic
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
 
@@ -57,7 +57,7 @@ The human does these steps outside Kiro:
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
   - [x] 6.2 (data-cleaner subagent) Clean the NOAA revenue CSV and draft data/processed/name_map.csv matching NOAA species and area names to the survey species and BOEM leases; stop and ask the human to confirm the mapping
     - _Requirements: 6.1_
-  - [ ] 6.3 Join the 5-year average value to each lease and species, showing "no data" when nothing matches; save data/processed/lease_signals.csv
+  - [x] 6.3 Join the 5-year average value to each lease and species, showing "no data" when nothing matches; save data/processed/lease_signals.csv
     - _Requirements: 6.1, 6.3_
 
 - [ ] 7. Build the app: map, selectors and lease panel (2 h)
