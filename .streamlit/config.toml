@@ -1,0 +1,22 @@
+# Shifting Grounds -- app theme (task 7.4 visual polish).
+#
+# Base colors only: a cornflower-blue accent on a slate (blue-grey) dark surface, away
+# from stark pure black & white. Spacing, sidebar width and heading tweaks are applied in
+# a small scoped CSS block injected from app.py (st.markdown, unsafe_allow_html=True).
+#
+# These colors are CHROME only. They do NOT touch the map's data-color ramps (the
+# diverging blue/white/red habitat-change ramp or the sequential yellow->red suitability
+# ramp) or the semantic signal-badge colors (Rising/Falling/Stable/Uncertain) -- those
+# encode data and are set in app.py, not here.
+
+[theme]
+base = "dark"
+
+# Cornflower blue accent for active/selected controls, links and focus rings.
+primaryColor = "#6495ED"
+
+# Slate dark surfaces instead of pure black: slate-900 app background, slate-800 panels
+# and sidebar (secondary surface). Readable light-slate body text (not pure white).
+backgroundColor = "#0f172a"
+secondaryBackgroundColor = "#1e293b"
+textColor = "#e2e8f0"

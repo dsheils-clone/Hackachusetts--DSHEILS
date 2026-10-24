@@ -6,9 +6,13 @@ service in task 7 (the SHAP plot and the DeepSeek brief are task 8 -- see the cl
 marked seams below).
 
 Layout (design.md "## Components and Interfaces" -> app.py):
-- Sidebar: species and warming scenario (+1 / +2 C) selectors. The lease-area selector
-  lives in the right panel of the Map tab (task 7.3), above the lease status it drives;
-  clicking a lease outline on the map selects it too, and the two stay in sync.
+- No sidebar (task 7.4): the controls live in the main area so the controls and the map
+  are visible together. Above the map, a single compact control strip holds the species
+  dropdown SIDE-BY-SIDE with the +0 / +1 / +2 C warming segmented control, then a row of
+  the three map-layer toggles. The lease-area selector lives in the right panel of the
+  Map tab (task 7.3), above the lease status it drives; clicking a lease outline on the
+  map selects it too, and the two stay in sync. The warming segmented control drives BOTH
+  the map AND the lease panel (one warming level for the whole tab).
 - A folium map via streamlit-folium: active BOEM lease outlines plus the 0.2-degree
   grid colored by the PERCENT CHANGE in habitat suitability from the +0 C baseline to
   the selected warmed scenario, for the selected species. Diverging palette centered on
@@ -772,6 +776,104 @@ def main() -> None:
 
     st.set_page_config(page_title="Shifting Grounds", layout="wide")
 
+    # --- App chrome styling (task 7.4 "polished & tasteful") ----------------
+    # A single scoped CSS block that restyles only the app CHROME: tighter vertical
+    # spacing above the map so the folium map sits near the top of the viewport without
+    # scrolling, cornflower-blue accents on the title/headings/links, and a subtle slate
+    # header bar for the title. The slate base colors come from .streamlit/config.toml
+    # [theme]; this block layers spacing + accents on top.
+    #
+    # NOTE (task 7.4 layout change): the sidebar was removed entirely -- all controls now
+    # live in the main area -- so the old thin-sidebar CSS rule is gone with it.
+    #
+    # Palette (chrome only):
+    #   cornflower blue   #6495ED  (accent)      deeper blue  #4A78D0  (contrast/hover)
+    #   slate-900         #0f172a  (app bg)      slate-800    #1e293b  (panels/sidebar)
+    #   slate-700         #334155  (borders)     light slate  #e2e8f0  (body text)
+    #
+    # IMPORTANT: this restyles CHROME ONLY. It does not touch the map's data-color ramps
+    # (diverging change ramp / sequential suitability ramp) or the semantic signal-badge
+    # colors -- those encode data and live in build_map / SIGNAL_COLORS, untouched.
+    st.markdown(
+        """
+        <style>
+        :root { --cornflower: #6495ED; --cornflower-deep: #4A78D0; }
+
+        /* Compact the main block, but keep enough top clearance that the first element
+           (the slate title header bar) sits fully BELOW Streamlit's fixed top toolbar
+           (~3.5rem tall, position:fixed) instead of being clipped underneath it. The
+           map stays visible without scrolling because the map column below is heavily
+           compacted; we also trim the title bar's own vertical padding to claw back the
+           space this clearance adds. */
+        .block-container { padding-top: 3.25rem !important; padding-bottom: 2rem; }
+
+        /* Subtle slate header bar for the app title (tasteful, not a loud banner). */
+        h1#shifting-grounds, .stApp h1:first-of-type {
+            color: var(--cornflower);
+            font-size: 1.9rem !important;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            margin: 0 0 0.1rem 0 !important;
+            padding: 0.25rem 0.75rem;
+            border-left: 4px solid var(--cornflower);
+            background: linear-gradient(90deg, rgba(100,149,237,0.14), rgba(100,149,237,0.0));
+            border-radius: 6px;
+        }
+
+        /* Cornflower accent on section headings (st.subheader renders <h3>). */
+        .stApp h2, .stApp h3 { color: var(--cornflower); }
+        .stApp h3 { font-size: 1.15rem !important; margin-bottom: 0.25rem !important; }
+
+        /* Links in the cornflower accent, deeper on hover. */
+        .stApp a { color: var(--cornflower); }
+        .stApp a:hover { color: var(--cornflower-deep); }
+
+        /* Checkbox accent -> cornflower when checked (map-layer toggles). */
+        .stApp input[type="checkbox"] { accent-color: var(--cornflower); }
+
+        /* Tighten the vertical rhythm of the map column so the warming control, the
+           layer toggles and the map all fit on screen at once. The warming segments and
+           the three layer checkboxes share ONE horizontal control band (st.columns);
+           the species label is a small inline caption, not a tall heading. */
+        .map-stack-compact { margin: 0.1rem 0 0.05rem 0; }
+
+        /* Small inline species caption (muted cornflower) -- replaces the old tall
+           map-species-head <h3>-sized heading so it no longer eats a row. */
+        .map-species-caption {
+            color: var(--cornflower);
+            font-size: 0.92rem;
+            font-weight: 600;
+            line-height: 1.2;
+            margin: 0.1rem 0 0.15rem 0;
+        }
+
+        /* Collapse the vertical padding Streamlit puts around the columns, the
+           segmented control and the checkboxes inside the control band, so the whole
+           strip is only one or two short rows tall. */
+        .map-control-band [data-testid="column"] { padding-top: 0 !important; }
+        .map-control-band [data-testid="stVerticalBlock"] { gap: 0.2rem !important; }
+        .map-control-band [data-testid="stCheckbox"] { margin-bottom: 0 !important; }
+        .map-control-band label { font-size: 0.85rem !important; }
+
+        /* Pull the st_folium iframe up tight under the control band. */
+        .map-stack-compact + div iframe { margin-top: 0.05rem; }
+
+        /* Metric labels/values read on slate. */
+        .stApp [data-testid="stMetricValue"] { color: #f1f5f9; }
+        .stApp [data-testid="stMetricLabel"] { color: #94a3b8; }
+
+        /* Caption color: a muted slate that still meets contrast on the dark bg. */
+        .stApp [data-testid="stCaptionContainer"],
+        .stApp .stCaption { color: #94a3b8; }
+
+        /* Tab labels: active tab underlined/colored in the accent. */
+        .stApp button[data-baseweb="tab"][aria-selected="true"] { color: var(--cornflower); }
+        .stApp div[data-baseweb="tab-highlight"] { background-color: var(--cornflower) !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     # Cache the processed files so reruns on selector changes are cheap.
     @st.cache_data(show_spinner=False)
     def _signals():
@@ -840,19 +942,11 @@ def main() -> None:
         "offshore wind lease areas. A planning signal, not a verdict."
     )
 
-    # --- Sidebar selectors --------------------------------------------------
-    st.sidebar.header("Explore")
-
-    species = st.sidebar.selectbox(
-        "Species",
-        options=SPECIES_ORDER,
-        format_func=lambda s: SPECIES_LABELS.get(s, s),
-    )
-    delta = st.sidebar.selectbox(
-        "Warming scenario",
-        options=WARMED_DELTAS,
-        format_func=lambda d: f"+{d} \u00b0C bottom temperature",
-    )
+    # --- Controls now live in the main area (task 7.4) ----------------------
+    # The old left sidebar is gone entirely. The species dropdown is rendered INSIDE the
+    # Map tab's control strip, side-by-side with the warming segmented control (see
+    # col_map below). The warming level for BOTH the map and the lease panel comes from
+    # that segmented control (there is no longer a separate "Warming scenario" selectbox).
 
     # Lease options in a stable, readable order. The lease-area SELECTOR itself lives in
     # the right panel of the Map tab (not the sidebar) as of task 7.3; here we only build
@@ -914,19 +1008,36 @@ def main() -> None:
     )
 
     with tab_map:
-        col_map, col_panel = st.columns([3, 2])
+        # With the sidebar gone the main area is full width, so give the MAP column the
+        # lion's share and keep the lease panel narrow-but-readable (~2.5:1, was 3:2).
+        col_map, col_panel = st.columns([5, 2])
 
         with col_map:
+            # --- Top control strip: species dropdown + warming segments side by side ---
+            # (task 7.4) The species selector moved out of the now-deleted sidebar into
+            # the main control strip, sitting next to the warming segmented control in one
+            # short row. The segmented control drives BOTH the map AND the lease panel
+            # (one warming level for the whole tab), so the separate "Warming scenario"
+            # selectbox is gone. The species dropdown goes in the LEFT sub-column; the
+            # warming segments in the RIGHT sub-column.
+            strip_species, strip_warming = st.columns([2, 3])
+
+            species = strip_species.selectbox(
+                "Species",
+                options=SPECIES_ORDER,
+                format_func=lambda s: SPECIES_LABELS.get(s, s),
+                key="species_select",
+            )
+
             # --- Warming control: a three-segment button bar (+0 / +1 / +2 C) --
-            # A simple segmented control drives ONLY the map, so the viewer can jump
-            # between the three REAL model frames and watch the habitat change. It is
-            # framed as DEGREES OF WARMING, never as years or a timeline: the model has
-            # no time axis (bottom temperature + depth only, D-004/D-007). The three
-            # segments are the three real model outputs (SWEEP_DELTAS) -- no interpolation
-            # across the warming axis, and (unchanged from 7.1) no spatial interpolation
-            # between cells. There is NO autoplay and NO slider: clicking a segment jumps
-            # the map straight to that frame. The sidebar "+1 / +2 C" selector still
-            # drives the lease panel on the right, independently of this control.
+            # A simple segmented control that drives the map AND the lease panel, so the
+            # viewer can jump between the three REAL model frames and watch the habitat
+            # change. It is framed as DEGREES OF WARMING, never as years or a timeline:
+            # the model has no time axis (bottom temperature + depth only, D-004/D-007).
+            # The three segments are the three real model outputs (SWEEP_DELTAS) -- no
+            # interpolation across the warming axis, and (unchanged from 7.1) no spatial
+            # interpolation between cells. There is NO autoplay and NO slider: clicking a
+            # segment jumps the map straight to that frame.
             #
             # CSS (scoped to this control's wrapper) makes the three options read as one
             # connected button bar with the ACTIVE segment visibly PRESSED/inset: filled
@@ -966,7 +1077,7 @@ def main() -> None:
                 .warming-seg button[aria-pressed="true"],
                 .warming-seg div[role="radiogroup"] > label[data-checked="true"],
                 .warming-seg div[role="radiogroup"] input:checked + div {
-                    background: #1f6feb !important;
+                    background: #6495ED !important;  /* cornflower-blue accent */
                     color: #ffffff !important;
                     box-shadow: inset 0 2px 4px rgba(0,0,0,0.35) !important;
                     transform: translateY(1px);
@@ -977,11 +1088,11 @@ def main() -> None:
                 unsafe_allow_html=True,
             )
 
-            st.markdown('<div class="warming-seg">', unsafe_allow_html=True)
+            strip_warming.markdown('<div class="warming-seg">', unsafe_allow_html=True)
             if hasattr(st, "segmented_control"):
                 # Native segmented control (Streamlit >= 1.66). Default +0 C.
-                sweep_delta = st.segmented_control(
-                    "Warming scenario (map)",
+                sweep_delta = strip_warming.segmented_control(
+                    "Warming scenario",
                     options=SWEEP_DELTAS,
                     format_func=lambda d: f"+{d} \u00b0C",
                     default=SWEEP_DELTAS[0],
@@ -989,7 +1100,8 @@ def main() -> None:
                     help=(
                         "Degrees of bottom-water warming, not a timeline. These are the "
                         "three scenarios the model produced (+0, +1, +2 \u00b0C); there "
-                        "is no year axis. +0 \u00b0C is the baseline (no change yet)."
+                        "is no year axis. +0 \u00b0C is the baseline (no change yet). "
+                        "Drives both the map and the lease panel."
                     ),
                 )
                 # A deselected segmented_control returns None; fall back to the baseline.
@@ -997,8 +1109,8 @@ def main() -> None:
                     sweep_delta = SWEEP_DELTAS[0]
             else:
                 # Fallback for older Streamlit: a horizontal radio styled as the bar.
-                sweep_delta = st.radio(
-                    "Warming scenario (map)",
+                sweep_delta = strip_warming.radio(
+                    "Warming scenario",
                     options=SWEEP_DELTAS,
                     format_func=lambda d: f"+{d} \u00b0C",
                     index=0,
@@ -1010,45 +1122,64 @@ def main() -> None:
                         "is no year axis. +0 \u00b0C is the baseline (no change yet)."
                     ),
                 )
-            st.markdown("</div>", unsafe_allow_html=True)
+            strip_warming.markdown("</div>", unsafe_allow_html=True)
             sweep_delta = int(sweep_delta)
 
+            # --- One compact control band above the map (task 7.4) -------------
+            # Collapse the old stacked blocks ("MAP LAYERS" label, a row of checkboxes, a
+            # caption) into ONE short horizontal strip so the species + warming control
+            # row above, the three layer toggles AND the map are all visible at once on a
+            # normal laptop viewport without scrolling. The species dropdown and warming
+            # segmented control already rendered just above (one side-by-side row); here
+            # we lay the three layer toggles beside a small inline species caption in a
+            # single st.columns row, then pull the map up tight underneath.
+            #
+            # The layer toggles REPLACE folium's in-map LayerControl (st_folium cannot
+            # read the Leaflet control's state back, so changing the warming segment used
+            # to reset the user's manual toggles). Streamlit checkboxes keyed into
+            # session_state persist across reruns; we READ their values and pass them to
+            # build_map as show flags. We never WRITE these widgets' own keys after they
+            # are instantiated (that is what raised StreamlitWidgetAlreadyInstantiated-
+            # Error before) -- Streamlit seeds each key's default from `value=` on first
+            # run and then persists the user's choice. Defaults match the original
+            # behavior: change ON, leases ON, suitability OFF. The checkbox LABELS and
+            # the three layer_show_* / warming_segment keys are unchanged.
+
+            # Small inline species caption (task 7.4): a short muted-cornflower one-liner
+            # instead of a tall <h3> heading, so it no longer eats a full row. Same
+            # honest wording as before (baseline vs change at +X.0 C).
             if sweep_delta == 0:
-                st.subheader(
-                    f"{SPECIES_LABELS[species]} \u2014 baseline (+0.0 \u00b0C, no change yet)"
+                _species_caption = (
+                    f"{SPECIES_LABELS[species]} \u00b7 baseline "
+                    "(+0.0 \u00b0C, no change yet)"
                 )
             else:
-                st.subheader(
-                    f"{SPECIES_LABELS[species]} \u2014 change at +{float(sweep_delta):.1f} \u00b0C warming"
+                _species_caption = (
+                    f"{SPECIES_LABELS[species]} \u00b7 change at "
+                    f"+{float(sweep_delta):.1f} \u00b0C warming"
                 )
 
-            # --- Map layer toggles (Streamlit, backed by session state) --------
-            # These REPLACE folium's in-map LayerControl. st_folium cannot read the
-            # Leaflet control's toggle state back, so every rerun (e.g. changing the
-            # warming segment) re-rendered the map with the layers in their DEFAULT
-            # states and reset the user's manual toggles. Streamlit checkboxes keyed into
-            # session_state persist across reruns; we READ their return values and pass
-            # them into build_map as show flags. We deliberately do NOT write these
-            # widgets' own keys after they are instantiated (that is what raised the
-            # StreamlitWidgetAlreadyInstantiatedError before) -- Streamlit seeds each
-            # key's default from the checkbox `value=` on first run and then persists the
-            # user's choice. Defaults match the original behavior: change ON, leases ON,
-            # suitability OFF.
-            st.markdown("**Map layers**")
-            tog_change, tog_leases, tog_suit = st.columns(3)
-            show_change = tog_change.checkbox(
-                "Habitat change", value=True, key="layer_show_change"
+            st.markdown('<div class="map-control-band">', unsafe_allow_html=True)
+            band_caption, band_change, band_leases, band_suit = st.columns(
+                [3, 1.4, 1.5, 1.7]
             )
-            show_leases = tog_leases.checkbox(
+            band_caption.markdown(
+                f"<div class='map-species-caption'>{_species_caption}</div>",
+                unsafe_allow_html=True,
+            )
+            show_change = band_change.checkbox(
+                "Habitat change",
+                value=True,
+                key="layer_show_change",
+                help="Map layers persist as you change the warming scenario.",
+            )
+            show_leases = band_leases.checkbox(
                 "Wind lease areas", value=True, key="layer_show_leases"
             )
-            show_suitability = tog_suit.checkbox(
+            show_suitability = band_suit.checkbox(
                 "Habitat suitability", value=False, key="layer_show_suitability"
             )
-            st.caption(
-                "These toggles control which layers the map shows and persist as you "
-                "change the warming scenario or anything else on the page."
-            )
+            st.markdown("</div>", unsafe_allow_html=True)
 
             # At +0 C the change is 0 everywhere by definition (baseline vs itself);
             # grid_change_for handles delta == 0 cleanly (scenario == baseline -> 0%).
@@ -1071,6 +1202,10 @@ def main() -> None:
             # MAP_KEY so the reconciliation at the top of the tab can read it on the NEXT
             # run and sync selected_lease_id. returned_objects is no longer [] (which
             # returned nothing) -- it now lists exactly the click fields we consume.
+            # Tight wrapper marker so the CSS trims the gap right above the map iframe.
+            st.markdown(
+                "<div class='map-stack-compact'></div>", unsafe_allow_html=True
+            )
             st_folium(
                 fmap,
                 width=None,
@@ -1140,54 +1275,93 @@ def main() -> None:
 
             st.subheader(f"{lease_label.get(lease_id, lease_id)}")
             st.caption(f"Lease {lease_id}")
-            row = lease_panel_row(signals, lease_id, species, delta)
-            if row is None:
-                st.info("No signal computed for this combination.")
-            else:
-                signal = row["signal"]
-                color = SIGNAL_COLORS.get(signal, "#808080")
-                st.markdown(
-                    f"<div style='display:inline-block;padding:4px 14px;border-radius:14px;"
-                    f"background:{color};color:white;font-weight:600;font-size:1.05rem'>"
-                    f"{signal}</div>",
-                    unsafe_allow_html=True,
-                )
-                st.write("")
 
-                c1, c2, c3 = st.columns(3)
-                c1.metric("Baseline (+0 \u00b0C)", format_suitability(row["baseline"]))
-                c2.metric(
-                    f"Scenario (+{delta} \u00b0C)", format_suitability(row["scenario"])
-                )
-                c3.metric("Change", format_change(row["change"]))
-
-                st.caption(
-                    "Signal uses percent change (Stable within \u00b110%); the map "
-                    "shades by absolute change \u2014 the two can differ where baseline "
-                    "suitability is near zero."
-                )
-
-                st.metric(
-                    "Avg annual fishing value (NOAA, last 5 yrs)",
-                    format_revenue(row["avg_value"]),
-                )
-
-                # --- Task 8: DeepSeek brief (with template fallback) --------
-                # A 2-3 sentence plain-English note built ONLY from the numbers above and
-                # the fixed suggestion text (explain.brief). If the DeepSeek call fails
-                # for any reason it returns the deterministic template sentence, so this
-                # never crashes or hangs the app. We render it ABOVE the fixed suggestion;
-                # the suggestion text is still shown in full below (the brief supplements,
-                # it does not replace it).
-                st.markdown("**Plain-English brief**")
-                with st.spinner("Writing a short brief..."):
-                    brief_text = _brief_cached(
-                        lease_id, species, int(delta)
+            # --- Warming level comes from the segmented control (task 7.4) -------
+            # With the sidebar "Warming scenario" selectbox gone, the lease panel reads
+            # the SAME warming level the map uses: the segmented control's value
+            # (sweep_delta, in {0, 1, 2}). This keeps the map and the panel on one
+            # warming level.
+            #
+            # Human-approved +0 C behavior: lease_signals.csv only has rows for the
+            # WARMED scenarios (delta in {1, 2}); there is no signal row at +0, and a
+            # change of zero has no Rising/Falling/Stable signal. So at +0 C we show the
+            # BASELINE suitability (read from the +1 row's ``baseline`` column, which is
+            # the +0 suitability by construction) plus a short note telling the viewer to
+            # pick +1 or +2 to see the warming signal -- we do NOT fabricate a signal.
+            # At +1 / +2 C we use lease_panel_row(...) exactly as before.
+            if sweep_delta == 0:
+                # Baseline-only view: no signal row exists at +0. Pull the baseline
+                # suitability from either warmed row (both carry the same +0 baseline).
+                base_row = lease_panel_row(signals, lease_id, species, WARMED_DELTAS[0])
+                if base_row is None:
+                    st.info("No baseline computed for this combination.")
+                else:
+                    st.markdown(
+                        "<div style='display:inline-block;padding:4px 14px;"
+                        "border-radius:14px;background:#64748b;color:white;"
+                        "font-weight:600;font-size:1.05rem'>Baseline</div>",
+                        unsafe_allow_html=True,
                     )
-                st.write(brief_text)
+                    st.write("")
+                    st.metric(
+                        "Baseline suitability (+0 \u00b0C)",
+                        format_suitability(base_row["baseline"]),
+                    )
+                    st.caption("Select +1 or +2 \u00b0C to see the warming signal.")
+                    st.metric(
+                        "Avg annual fishing value (NOAA, last 5 yrs)",
+                        format_revenue(base_row["avg_value"]),
+                    )
+            else:
+                row = lease_panel_row(signals, lease_id, species, sweep_delta)
+                if row is None:
+                    st.info("No signal computed for this combination.")
+                else:
+                    signal = row["signal"]
+                    color = SIGNAL_COLORS.get(signal, "#808080")
+                    st.markdown(
+                        f"<div style='display:inline-block;padding:4px 14px;border-radius:14px;"
+                        f"background:{color};color:white;font-weight:600;font-size:1.05rem'>"
+                        f"{signal}</div>",
+                        unsafe_allow_html=True,
+                    )
+                    st.write("")
 
-                st.markdown("**Suggestion**")
-                st.write(row["suggestion"])
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric("Baseline (+0 \u00b0C)", format_suitability(row["baseline"]))
+                    c2.metric(
+                        f"Scenario (+{sweep_delta} \u00b0C)",
+                        format_suitability(row["scenario"]),
+                    )
+                    c3.metric("Change", format_change(row["change"]))
+
+                    st.caption(
+                        "Signal uses percent change (Stable within \u00b110%); the map "
+                        "shades by absolute change \u2014 the two can differ where baseline "
+                        "suitability is near zero."
+                    )
+
+                    st.metric(
+                        "Avg annual fishing value (NOAA, last 5 yrs)",
+                        format_revenue(row["avg_value"]),
+                    )
+
+                    # --- Task 8: DeepSeek brief (with template fallback) --------
+                    # A 2-3 sentence plain-English note built ONLY from the numbers above
+                    # and the fixed suggestion text (explain.brief). If the DeepSeek call
+                    # fails for any reason it returns the deterministic template sentence,
+                    # so this never crashes or hangs the app. We render it ABOVE the fixed
+                    # suggestion; the suggestion text is still shown in full below (the
+                    # brief supplements, it does not replace it).
+                    st.markdown("**Plain-English brief**")
+                    with st.spinner("Writing a short brief..."):
+                        brief_text = _brief_cached(
+                            lease_id, species, int(sweep_delta)
+                        )
+                    st.write(brief_text)
+
+                    st.markdown("**Suggestion**")
+                    st.write(row["suggestion"])
 
     with tab_hindcast:
         st.subheader(f"Hindcast \u2014 {SPECIES_LABELS[species]}")

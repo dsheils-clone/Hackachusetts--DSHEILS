@@ -79,6 +79,8 @@ The human does these steps outside Kiro:
     - _Requirements: 4.2, 4.3, 8.1_
   - [x] 7.3 Move the lease-area selector to the right panel (above the lease status) and make clicking a lease polygon on the map select it; map-click and dropdown stay in sync
     - _Requirements: 6.2, 8.1, 8.3_
+  - [x] 7.4 Visual polish pass (polished & tasteful): thinner left sidebar; compact vertical spacing so the map is visible without scrolling; cornflower-blue accents + slate dark surfaces (not pure black); condensed headers/clean header bar. Map DATA colors (change diverging ramp, suitability sequential ramp) and all guardrail-protected text unchanged
+    - _Requirements: 8.1, 8.3_
 
 - [x] 8. Add explanations (1 h)
   - SHAP temperature response plot per species in a tab

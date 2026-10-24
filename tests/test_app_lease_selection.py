@@ -4,10 +4,12 @@ selection kept in sync with the dropdown.
 Two layers:
 - Pure helpers (no Streamlit): lease_id_from_tooltip, lease_id_at_point,
   resolve_clicked_lease -- how a folium click is mapped back to a lease id.
-- Streamlit AppTest: the selector lives in the MAIN area (not the sidebar), selecting a
-  lease updates the panel, a simulated map click updates both the selection and the
-  dropdown, and reselecting the already-selected lease is a crash-free no-op (no infinite
-  rerun, no StreamlitWidgetAlreadyInstantiatedError).
+- Streamlit AppTest: all controls live in the MAIN area (task 7.4 removed the sidebar
+  entirely -- Species and the lease selector are now main-body selectboxes and there is
+  no "Warming scenario" selectbox), selecting a lease updates the panel, a simulated map
+  click updates both the selection and the dropdown, and reselecting the already-selected
+  lease is a crash-free no-op (no infinite rerun, no StreamlitWidgetAlreadyInstantiated-
+  Error).
 """
 
 import os
@@ -103,17 +105,19 @@ def _fresh_app():
     ).run()
 
 
-def test_lease_selector_in_main_area_not_sidebar():
+def test_controls_in_main_area_no_sidebar():
     at = _fresh_app()
     assert _no_exception(at)
-    # The lease selector is in the main body...
+    # Task 7.4: no sidebar at all -- every selectbox is in the main body.
     main_labels = [s.label for s in at.selectbox]
     assert "Lease area" in main_labels
-    # ...and NOT in the sidebar (only Species + Warming scenario remain there).
-    sidebar_labels = [s.label for s in at.sidebar.selectbox]
-    assert "Lease area" not in sidebar_labels
-    assert "Species" in sidebar_labels
-    assert "Warming scenario" in sidebar_labels
+    # Species moved out of the (now-deleted) sidebar into the main control strip.
+    assert "Species" in main_labels
+    # The sidebar is empty (the two old selectboxes are gone)...
+    assert len(at.sidebar.selectbox) == 0
+    # ...and the redundant "Warming scenario" selectbox was deleted (the segmented
+    # control selects warming now).
+    assert "Warming scenario" not in main_labels
 
 
 def test_dropdown_selection_updates_panel(lease_ids):
@@ -155,6 +159,38 @@ def test_reclicking_selected_lease_is_a_crash_free_noop():
     at.run()
     assert _no_exception(at)
     assert at.session_state["selected_lease_id"] == sel
+
+
+# --- Task 7.4: the lease panel follows the segmented warming control --------
+
+
+def test_panel_at_zero_shows_baseline_note_not_signal():
+    # Default warming segment is +0 C. The panel must show the baseline note and NOT a
+    # Rising/Falling/Stable/Uncertain signal (there is no signal row at +0).
+    at = _fresh_app()
+    assert _no_exception(at)
+    assert at.session_state["warming_segment"] == 0
+    captions = [c.value for c in at.caption]
+    assert any("Select +1 or +2" in c for c in captions)
+    # No signal badge markdown at +0 (the four signal words should not head the panel).
+    markdown_blobs = " ".join(m.value for m in at.markdown)
+    assert "Baseline</div>" in markdown_blobs
+
+
+def test_panel_follows_segmented_control_to_plus_one():
+    # Moving the segmented control to +1 C makes the panel show the real signal and the
+    # scenario metric labeled "+1 C" -- the panel uses the SAME warming level as the map.
+    at = _fresh_app()
+    assert _no_exception(at)
+    at.session_state["warming_segment"] = 1
+    at.run()
+    assert _no_exception(at)
+    # The +0 baseline note is gone; a real signal/scenario is shown.
+    captions = [c.value for c in at.caption]
+    assert not any("Select +1 or +2" in c for c in captions)
+    # The scenario metric is labeled with the segmented control's +1 C level.
+    metric_labels = [m.label for m in at.metric]
+    assert any("Scenario (+1" in lbl for lbl in metric_labels)
 
 
 if __name__ == "__main__":
