@@ -24,3 +24,6 @@ env/
 
 # OS / editor
 .DS_Store
+
+# Submission guidelines - For Agent Reference
+RULES.pdf

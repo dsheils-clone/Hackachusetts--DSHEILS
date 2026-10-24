@@ -70,7 +70,7 @@ The human does these steps outside Kiro:
 
   - [x] 7.1 Map revamp: leases as a bold foreground layer with a grid on/off toggle; smoother, semi-transparent/blurred habitat cells anchored to the real 0.2° cells (no interpolation of values); keep OpenStreetMap basemap (no API key)
     - _Requirements: 4.3, 8.1, 8.2_
-  - [ ] 7.2 Warming slider/animation: sweep +0 → +2°C showing the habitat change build up, framed as DEGREES OF WARMING not years (honest; only the +0/+1/+2°C scenarios the model produced, or clearly-labelled interpolation); its own human checkpoint
+  - [x] 7.2 Warming slider/animation: sweep +0 → +2°C showing the habitat change build up, framed as DEGREES OF WARMING not years (honest; only the +0/+1/+2°C scenarios the model produced, or clearly-labelled interpolation); its own human checkpoint
     - _Requirements: 4.2, 4.3, 8.1_
 
 - [ ] 8. Add explanations (1 h)

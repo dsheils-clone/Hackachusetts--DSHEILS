@@ -255,6 +255,33 @@
         "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
         "timestamp": 1792863453286
       }
+    ],
+    "7.2 Warming slider/animation: sweep +0 → +2°C showing the habitat change build up, framed as DEGREES OF WARMING not years (honest; only the +0/+1/+2°C scenarios the model produced, or clearly-labelled interpolation); its own human checkpoint": [
+      {
+        "executionId": "cefd334f-5666-4668-9d2a-c5637b5b7f33",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792864009224
+      },
+      {
+        "executionId": "7071a181-4ac0-4774-a716-97950af8a3e9",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792864697186
+      },
+      {
+        "executionId": "90f1aa15-c014-4c96-8244-6c15435c0f99",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792865616535
+      },
+      {
+        "executionId": "67589a01-5159-4727-b1b1-ad8ecd089d7c",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792866423916
+      },
+      {
+        "executionId": "4926f458-1f88-4048-bcdc-def47a6d5fe4",
+        "chatSessionId": "sess_c4bd2271-dfdf-40a4-b478-f8282dd8edb8",
+        "timestamp": 1792866995502
+      }
     ]
   }
 }

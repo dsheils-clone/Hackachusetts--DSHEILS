@@ -77,6 +77,15 @@ SPECIES_ORDER = list(SPECIES_LABELS.keys())
 # it is the reference the change is measured against), so the selector offers +1 and +2.
 WARMED_DELTAS = [1, 2]
 
+# The three REAL warming frames the model produced (grid_predictions.csv has delta in
+# {0, 1, 2}). The segmented map control offers exactly these -- degrees of BOTTOM-WATER
+# WARMING, not a timeline. There is no time axis: the models use only bottom temperature
+# and depth (D-004/D-007), so these are "+0 C / +1 C / +2 C of warming", never years or
+# dates. At +0 C every cell's change is 0 by definition (the baseline it is measured
+# against); it is the default segment so the viewer starts from "no change yet".
+SWEEP_DELTAS = [0, 1, 2]
+
+
 # Signal -> color for the lease panel badge (not the map; the map colors by numeric
 # change). Neutral, not a verdict palette -- Uncertain is grey, not red.
 SIGNAL_COLORS = {
@@ -86,10 +95,25 @@ SIGNAL_COLORS = {
     "Uncertain": "#808080",  # grey: not confident
 }
 
-# Diverging map palette for percent change, centered on zero. Blue = falling (habitat
-# shrinks), white = ~no change, red = rising (habitat grows). The scale saturates at
-# +/-CHANGE_SCALE so a handful of huge percent changes don't wash out the rest.
-CHANGE_SCALE = 0.30  # +/-30% maps to full color saturation
+# Diverging MAP palette for ABSOLUTE change in suitability, centered on zero. Blue =
+# falling (habitat shrinks), white = ~no change, red = rising (habitat grows).
+#
+# The MAP colors by ABSOLUTE change = (scenario_suitability - baseline_suitability), a
+# value in roughly [-1, +1]. We switched the map off percent change on purpose: percent
+# change = (scenario - baseline) / baseline blows up in low-baseline cells (e.g. Atlantic
+# cod, baseline suitability ~0.0002) to thousands of percent, so one tiny-baseline cell
+# would saturate full red next to a real -80% neighbour. Absolute change has no
+# small-denominator blow-up, so the map reads honestly as a heat surface.
+#
+# The LEASE PANEL still shows PERCENT change and the Rising/Falling/Stable/Uncertain
+# signal (those are tied to the +/-10% thresholds in src/overlap.py); only the MAP
+# coloring uses absolute change.
+#
+# Saturation: +/-ABS_CHANGE_SCALE suitability maps to full blue/red. This is DISPLAY ONLY
+# (it only sets how colors spread, never a stored value). 0.30 keeps the map readable:
+# observed absolute changes span roughly [-0.70, +0.61], so +/-0.30 gives strong color to
+# meaningful shifts without a handful of extreme cells washing out the rest.
+ABS_CHANGE_SCALE = 0.30  # +/-0.30 suitability maps to full color saturation
 
 # The exact caption for the hindcast scatter (task 7 bullet; must not be reworded).
 HINDCAST_CAPTION = (
@@ -155,13 +179,17 @@ def load_lease_outlines():
 def grid_change_for(
     grid_preds: pd.DataFrame, species: str, delta: int
 ) -> pd.DataFrame:
-    """Per-cell percent change in suitability for one species, +0 C -> +delta C.
+    """Per-cell change in suitability for one species, +0 C -> +delta C.
 
     Returns one row per grid cell with its lower-left corner (lat_cell, lon_cell), the
-    baseline (+0 C) and scenario (+delta C) suitability and the percent change
-    (scenario - baseline) / baseline, matching the lease-signal definition. Cells whose
-    baseline is zero give an undefined change (NaN) and are carried through so the caller
-    can gray them out rather than silently drop them.
+    baseline (+0 C) and scenario (+delta C) suitability, and BOTH change measures:
+
+    - ``abs_change`` = scenario - baseline, in roughly [-1, +1]. This is what the MAP
+      colors by (no small-denominator blow-up).
+    - ``change`` = (scenario - baseline) / baseline -- the percent change (as a fraction),
+      matching the lease-signal definition. Shown in the tooltip (annotated). Cells whose
+      baseline is zero give an undefined percent (NaN); their absolute change is still
+      defined, so they are still colored, and the tooltip flags the percent as n/a.
     """
     sub = grid_preds.loc[grid_preds["species"] == species]
     base = sub.loc[sub["delta"] == 0, ["lat_cell", "lon_cell", "suitability"]].rename(
@@ -171,30 +199,93 @@ def grid_change_for(
         columns={"suitability": "scenario"}
     )
     merged = base.merge(scen, on=["lat_cell", "lon_cell"], how="inner")
-    # Zero baseline -> division gives inf; treat that as an undefined change (NaN) so the
-    # cell is drawn grey rather than fully saturated.
     import numpy as np
 
-    change = (merged["scenario"] - merged["baseline"]) / merged["baseline"]
-    merged["change"] = change.replace([np.inf, -np.inf], np.nan)
+    # Absolute change drives the map coloring (bounded, no blow-up).
+    merged["abs_change"] = merged["scenario"] - merged["baseline"]
+    # Percent change (fraction) for the tooltip. Zero baseline -> inf -> undefined (NaN).
+    pct = (merged["scenario"] - merged["baseline"]) / merged["baseline"]
+    merged["change"] = pct.replace([np.inf, -np.inf], np.nan)
     return merged
 
 
-def _change_to_color(change: float) -> str:
-    """Map a percent change (fraction) to a diverging blue-white-red hex color.
+def _change_to_color(abs_change: float) -> str:
+    """Map an ABSOLUTE suitability change to a diverging blue-white-red hex color.
 
     Negative (falling) -> blue, ~0 -> white, positive (rising) -> red, saturating at
-    +/-CHANGE_SCALE. NaN (undefined change, e.g. zero baseline) -> light grey.
+    +/-ABS_CHANGE_SCALE. NaN (undefined, shouldn't happen for absolute change) -> grey.
     """
-    if change is None or pd.isna(change):
+    if abs_change is None or pd.isna(abs_change):
         return "#cccccc"
-    t = max(-1.0, min(1.0, float(change) / CHANGE_SCALE))
+    t = max(-1.0, min(1.0, float(abs_change) / ABS_CHANGE_SCALE))
     if t >= 0:  # white -> red
         r, g, b = 255, int(255 * (1 - t)), int(255 * (1 - t))
     else:  # white -> blue
         s = -t
         r, g, b = int(255 * (1 - s)), int(255 * (1 - s)), 255
     return f"#{r:02x}{g:02x}{b:02x}"
+
+
+# Percent-change display cap for the MAP TOOLTIP only. Tiny-baseline cells produce raw
+# percents in the thousands (e.g. +6809% when baseline suitability is near zero), which
+# is honest but unreadable as a headline. We cap the HEADER at "250%+" and, only when
+# capped, add a small-font footer explaining the near-zero baseline is why the percent is
+# so large. The body still shows the exact baseline -> scenario values and absolute
+# change, so the real numbers are always right there. This caps DISPLAY only; it never
+# touches the map's absolute-change coloring, the lease panel's percent/signal, or the
+# +/-10% signal thresholds in src/overlap.py. Suitability is bounded [0, 1], so the most
+# negative percent is about -100%; negatives are shown in full (no negative cap).
+TOOLTIP_PCT_CAP = 2.5  # 250%
+
+
+def format_tooltip_change(baseline, scenario, abs_change, pct_change) -> str:
+    """Build the annotated per-cell map tooltip (folium accepts HTML).
+
+    Layout:
+    - HEADER (bold, larger): the PERCENT change, the most prominent line. Capped at
+      "250%+" when the real percent exceeds +TOOLTIP_PCT_CAP (e.g. a near-zero baseline
+      cell whose real percent is +6809% shows "250%+"). At or below the cap the real
+      signed percent is shown (e.g. "-20%", "+140%"). Undefined percent (zero baseline)
+      shows "n/a".
+    - BODY: the baseline -> scenario suitability and the absolute change (Δ) -- the
+      context, with the real numbers so the viewer sees where the percent comes from.
+    - FOOTER (small, grey): ONLY present when the header was capped; a short note that
+      the baseline suitability is near zero, so a small absolute rise is a huge percent.
+
+    Examples:
+    - normal:  header "-20%",  body "Suitability 0.500 -> 0.400 (Δ -0.100)", no footer.
+    - capped:  header "250%+", body "Suitability 0.000 -> 0.052 (Δ +0.052)", footer
+      "Large % -- baseline suitability is near zero".
+    """
+    b = "n/a" if pd.isna(baseline) else f"{float(baseline):.3f}"
+    s = "n/a" if pd.isna(scenario) else f"{float(scenario):.3f}"
+    d = "n/a" if pd.isna(abs_change) else f"{float(abs_change):+.3f}"
+
+    capped = False
+    if pct_change is None or pd.isna(pct_change):
+        header = "n/a"
+    else:
+        p = float(pct_change)
+        if p > TOOLTIP_PCT_CAP:
+            # Cap the headline magnitude; the real numbers live in the body + footer.
+            header = f"{TOOLTIP_PCT_CAP:.0%}+"
+            capped = True
+        else:
+            header = f"{p:+.0%}"
+
+    header_html = (
+        f"<span style='font-weight:700;font-size:1.15em'>{header}</span>"
+    )
+    body_html = (
+        f"<span>Suitability {b} \u2192 {s} (\u0394 {d})</span>"
+    )
+    parts = [header_html, body_html]
+    if capped:
+        parts.append(
+            "<span style='font-size:0.8em;color:#666'>"
+            "Large % \u2014 baseline suitability is near zero</span>"
+        )
+    return "<br>".join(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -211,13 +302,18 @@ def build_map(leases, grid_change: pd.DataFrame, selected_lease_id: str | None =
 
     Habitat grid (honest, no interpolation):
     - Each real 0.2-degree cell (lower-left corner at lat_cell/lon_cell) is still drawn as
-      exactly ONE rectangle carrying ONE computed change value from grid_predictions.csv.
-      We do NOT interpolate or invent sub-cell values.
-    - The "smoother heat surface" look is purely a DISPLAY effect: the grid is placed in a
-      dedicated map pane with a CSS blur filter and a lower fill opacity, so the hard
-      spreadsheet edges feather and OSM place labels / lease outlines stay legible. The
-      blur softens how the edges LOOK; it never moves a value into a neighbour's cell, and
-      each rectangle's bounds and tooltip stay anchored to its own real cell.
+      exactly ONE rectangle carrying ONE computed value from grid_predictions.csv. We do
+      NOT interpolate or invent sub-cell values. The cell is colored by its ABSOLUTE
+      change in suitability (bounded ~[-1, +1]); its tooltip shows baseline, scenario,
+      absolute change and the (annotated) percent change.
+    - The "smoother heat surface" look is purely a DISPLAY effect: the grid sits in a
+      dedicated map pane with a stronger CSS blur so the hard spreadsheet edges feather
+      and adjacent cells blend at their shared edges, reading as one smooth surface. Each
+      rectangle is also drawn slightly LARGER than its real cell (a visual-only halo) and
+      with a soft matching-hue stroke, so neighbouring fills overlap just at the edges and
+      the seam between them dissolves. This overlaps only the VISUAL FILL, never the data:
+      every rectangle's tooltip and its real 0.2-degree bounds are unchanged, no value is
+      moved into a neighbour's cell, and nothing is spatially interpolated.
 
     Wind lease areas (bold foreground):
     - Drawn ABOVE the grid with a strong dark outline and a soft halo (a wide, faint
@@ -243,22 +339,38 @@ def build_map(leases, grid_change: pd.DataFrame, selected_lease_id: str | None =
         pointer_events=True,
     )
     grid_pane.add_to(fmap)
-    # Apply the feathering blur to just this pane (not the basemap or the leases).
+    # Apply a STRONGER feathering blur to just this pane (not the basemap or the leases),
+    # so adjacent cells blend smoothly at their shared edges and the grid reads as one
+    # heat surface rather than hard tiles. This is DISPLAY-ONLY softening of how the
+    # fixed-size cells LOOK; it does not interpolate, resample or shift any cell's value
+    # (each cell is still one rectangle anchored to its real 0.2-degree bounds).
     blur_css = folium.Element(
-        "<style>.leaflet-grid_pane-pane{filter:blur(6px);opacity:0.92;}</style>"
+        "<style>.leaflet-grid_pane-pane{filter:blur(11px);opacity:0.95;}</style>"
     )
     fmap.get_root().header.add_child(blur_css)
+    # Visual-only edge overlap: draw each fill rectangle slightly larger than its real
+    # cell so neighbouring fills meet and the seam dissolves under the blur. The data
+    # bounds are the real cell; this pad only widens the drawn fill, never the value.
+    FILL_PAD = CELL * 0.18  # ~0.036 deg of visual overlap on each side
 
     # --- Habitat-change grid (smoother look, one value per real cell) --------
     grid_layer = folium.FeatureGroup(name="Habitat change (toggle)", show=True)
     for _, row in grid_change.iterrows():
         lat, lon = float(row["lat_cell"]), float(row["lon_cell"])
-        change = row["change"]
-        color = _change_to_color(change)
-        pct = "n/a" if pd.isna(change) else f"{change:+.0%}"
+        abs_change = row["abs_change"]
+        color = _change_to_color(abs_change)  # MAP colors by absolute change
+        tip = format_tooltip_change(
+            row["baseline"], row["scenario"], abs_change, row["change"]
+        )
         folium.Rectangle(
-            # Bounds stay exactly on the real 0.2-degree cell: no overlap, no resampling.
-            bounds=[[lat, lon], [lat + CELL, lon + CELL]],
+            # The drawn FILL is padded slightly beyond the real cell so neighbouring
+            # fills overlap at their edges and blend under the blur. This is visual only:
+            # the value, the tooltip and the real 0.2-degree cell it describes are
+            # unchanged, and no value is resampled or interpolated into another cell.
+            bounds=[
+                [lat - FILL_PAD, lon - FILL_PAD],
+                [lat + CELL + FILL_PAD, lon + CELL + FILL_PAD],
+            ],
             color=color,       # soft edge the same hue as the fill (no hard black border)
             weight=1,
             opacity=0.0,       # the stroke itself is invisible; the pane blur feathers it
@@ -266,7 +378,7 @@ def build_map(leases, grid_change: pd.DataFrame, selected_lease_id: str | None =
             fill_color=color,
             fill_opacity=0.42,  # lower than before so OSM labels + lease outlines show
             pane="grid_pane",
-            tooltip=f"Cell change: {pct} (0.2\u00b0 survey grid cell)",
+            tooltip=tip,
         ).add_to(grid_layer)
     grid_layer.add_to(fmap)
 
@@ -497,23 +609,138 @@ def main() -> None:
         col_map, col_panel = st.columns([3, 2])
 
         with col_map:
-            st.subheader(
-                f"{SPECIES_LABELS[species]} \u2014 change at +{delta} \u00b0C"
+            # --- Warming control: a three-segment button bar (+0 / +1 / +2 C) --
+            # A simple segmented control drives ONLY the map, so the viewer can jump
+            # between the three REAL model frames and watch the habitat change. It is
+            # framed as DEGREES OF WARMING, never as years or a timeline: the model has
+            # no time axis (bottom temperature + depth only, D-004/D-007). The three
+            # segments are the three real model outputs (SWEEP_DELTAS) -- no interpolation
+            # across the warming axis, and (unchanged from 7.1) no spatial interpolation
+            # between cells. There is NO autoplay and NO slider: clicking a segment jumps
+            # the map straight to that frame. The sidebar "+1 / +2 C" selector still
+            # drives the lease panel on the right, independently of this control.
+            #
+            # CSS (scoped to this control's wrapper) makes the three options read as one
+            # connected button bar with the ACTIVE segment visibly PRESSED/inset: filled
+            # background, inset shadow and a 1px downward nudge so it looks recessed.
+            st.markdown(
+                """
+                <style>
+                /* Scope: the segmented/radio control inside .warming-seg only. */
+                .warming-seg div[role="radiogroup"],
+                .warming-seg div[data-baseweb="button-group"] {
+                    display: inline-flex;
+                    gap: 0;
+                    border: 1px solid #b9c2cc;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                /* Each segment: connected (shared 1px divider), flat by default. */
+                .warming-seg div[role="radiogroup"] > label,
+                .warming-seg button[kind],
+                .warming-seg div[data-baseweb="button-group"] button {
+                    margin: 0 !important;
+                    border: 0 !important;
+                    border-right: 1px solid #b9c2cc !important;
+                    border-radius: 0 !important;
+                    background: #f4f6f8 !important;
+                    color: #2b3138 !important;
+                    padding: 6px 18px !important;
+                    box-shadow: none !important;
+                    transition: background .1s ease;
+                }
+                .warming-seg div[role="radiogroup"] > label:last-child,
+                .warming-seg div[data-baseweb="button-group"] button:last-child {
+                    border-right: 0 !important;
+                }
+                /* ACTIVE segment: pressed/inset look (filled, recessed, nudged down). */
+                .warming-seg button[aria-checked="true"],
+                .warming-seg button[aria-pressed="true"],
+                .warming-seg div[role="radiogroup"] > label[data-checked="true"],
+                .warming-seg div[role="radiogroup"] input:checked + div {
+                    background: #1f6feb !important;
+                    color: #ffffff !important;
+                    box-shadow: inset 0 2px 4px rgba(0,0,0,0.35) !important;
+                    transform: translateY(1px);
+                    font-weight: 600 !important;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
             )
-            grid_change = grid_change_for(grid_preds, species, delta)
+
+            st.markdown('<div class="warming-seg">', unsafe_allow_html=True)
+            if hasattr(st, "segmented_control"):
+                # Native segmented control (Streamlit >= 1.66). Default +0 C.
+                sweep_delta = st.segmented_control(
+                    "Warming scenario (map)",
+                    options=SWEEP_DELTAS,
+                    format_func=lambda d: f"+{d} \u00b0C",
+                    default=SWEEP_DELTAS[0],
+                    key="warming_segment",
+                    help=(
+                        "Degrees of bottom-water warming, not a timeline. These are the "
+                        "three scenarios the model produced (+0, +1, +2 \u00b0C); there "
+                        "is no year axis. +0 \u00b0C is the baseline (no change yet)."
+                    ),
+                )
+                # A deselected segmented_control returns None; fall back to the baseline.
+                if sweep_delta is None:
+                    sweep_delta = SWEEP_DELTAS[0]
+            else:
+                # Fallback for older Streamlit: a horizontal radio styled as the bar.
+                sweep_delta = st.radio(
+                    "Warming scenario (map)",
+                    options=SWEEP_DELTAS,
+                    format_func=lambda d: f"+{d} \u00b0C",
+                    index=0,
+                    horizontal=True,
+                    key="warming_segment",
+                    help=(
+                        "Degrees of bottom-water warming, not a timeline. These are the "
+                        "three scenarios the model produced (+0, +1, +2 \u00b0C); there "
+                        "is no year axis. +0 \u00b0C is the baseline (no change yet)."
+                    ),
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
+            sweep_delta = int(sweep_delta)
+
+            if sweep_delta == 0:
+                st.subheader(
+                    f"{SPECIES_LABELS[species]} \u2014 baseline (+0.0 \u00b0C, no change yet)"
+                )
+            else:
+                st.subheader(
+                    f"{SPECIES_LABELS[species]} \u2014 change at +{float(sweep_delta):.1f} \u00b0C warming"
+                )
+
+            # At +0 C the change is 0 everywhere by definition (baseline vs itself);
+            # grid_change_for handles delta == 0 cleanly (scenario == baseline -> 0%).
+            grid_change = grid_change_for(grid_preds, species, sweep_delta)
             fmap = build_map(leases, grid_change, selected_lease_id=lease_id)
             st_folium(fmap, width=None, height=560, returned_objects=[])
+
+            st.caption(
+                "Warming scenario, not a timeline \u2014 degrees of bottom-water warming "
+                "(+0 / +1 / +2 \u00b0C). The model has no year axis; these are the three "
+                "scenarios it produced. +0 \u00b0C is the baseline (no change yet); pick "
+                "a segment to jump the map to that warming frame."
+            )
             st.markdown(
-                "Blue = habitat suitability falls, red = rises, white \u2248 little "
-                "change (saturates at \u00b130%). Grey cells have an undefined change. "
-                "Wind lease areas are outlined in bold on top; the selected lease is "
-                "highlighted. Use the layer control (top right) to hide the habitat grid "
-                "and read the map."
+                "Map color = **absolute change** in habitat suitability (scenario "
+                "\u2212 baseline). Blue = suitability falls, red = rises, white \u2248 "
+                "little change (saturates at \u00b10.30). Hover any cell for its "
+                "baseline \u2192 scenario values and both the absolute and percent "
+                "change. Wind lease areas are outlined in bold on top; the selected "
+                "lease is highlighted. Use the layer control (top right) to hide the "
+                "habitat grid and read the map."
             )
             st.caption(
                 "Each colored patch is one real 0.2\u00b0 survey grid cell with its own "
-                "computed value \u2014 the softened edges are display smoothing only, not "
-                "interpolation between cells."
+                "computed value. The smooth blended look is display smoothing only "
+                "(edge feathering); values are never interpolated or shared between "
+                "cells. The lease panel on the right still reports percent change and "
+                "the Rising/Falling/Stable/Uncertain signal."
             )
 
         with col_panel:
