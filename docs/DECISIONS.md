@@ -85,3 +85,9 @@ Decisions made before and during the build, oldest first. New entries follow the
 - Decision: Set `DEEPSEEK_MODEL=deepseek-chat` in .env.example and keep the real .env as-is.
 - Why: `deepseek-chat` is the cheaper model the human selected and matches the working key. Rejected: `deepseek-flash` (the spec default), to avoid a model-name mismatch at runtime.
 - Affects: .env.example, .env, src/explain.py (default model name)
+### D-013 · 10:43 · Derive season from the CRUISES join, and pin squid/scup SVSPP codes
+- Decided by: agent (data-cleaner, task 2.1)
+- Context: SVSTA has no SEASON column and the file spans all years/seasons back to 1963; the species list has a duplicate "SCUP" common name and a separate "egg mops" code for longfin squid.
+- Decision: Get FALL from CRUISES.SEASON joined on CRUISE6 (so task 2.3's "fall from 2009 onward" filters on season, not year alone). Use SVSPP 143 for scup (not 642, longspine porgy) and SVSPP 503 for longfin squid (excluding 520, egg mops).
+- Why: SVSTA alone can't identify fall tows, and a name-only lookup is ambiguous for scup and would double-count squid egg masses. Rejected: filtering by year only; matching species by common name. These flags are recorded in data/processed/column_map.md for the human to confirm at the 2.2 checkpoint.
+- Affects: data/processed/column_map.md, src/prepare_data.py (tasks 2.3/2.4)
